@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kalistenika Tréning</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f1115">
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -12,157 +14,82 @@
       color: #fff;
       padding: 20px;
     }
-    h1 {
-      text-align: center;
-      margin-bottom: 10px;
-    }
-    .workout-day {
-      font-size: 1.2em;
-      text-align: center;
+    h1 { text-align: center; margin-bottom: 10px; }
+    select, button {
+      width: 100%;
+      padding: 12px;
+      font-size: 1em;
       margin-bottom: 20px;
+      border-radius: 10px;
+      border: none;
+      background: #1a1d23;
+      color: #fff;
     }
+    button.submit-btn { background: #0dbf8c; color: #000; font-weight: bold; }
     .exercise {
       background: #1a1d23;
       padding: 12px;
       border-radius: 10px;
       margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
     }
     .exercise label {
-      display: block;
       margin-bottom: 6px;
       font-size: 1em;
     }
     .exercise input {
-      width: 80px;
-      padding: 5px;
+      width: 100px;
+      padding: 6px;
       font-size: 1em;
       border-radius: 5px;
       border: none;
     }
-    button {
-      display: block;
-      width: 100%;
-      padding: 12px;
+    .timer-btn {
+      margin-top: 6px;
+      padding: 6px;
       background: #0dbf8c;
       color: #000;
       border: none;
-      border-radius: 10px;
-      font-size: 1.1em;
-      font-weight: bold;
-      margin-top: 20px;
+      border-radius: 6px;
+      width: 100px;
     }
-    .status {
+    .status, .history {
       text-align: center;
-      margin-top: 15px;
-      font-size: 1.1em;
-      color: #0dbf8c;
+      margin-top: 20px;
+      font-size: 1em;
+    }
+    .history-entry {
+      font-size: 0.9em;
+      background: #1c1f26;
+      margin-top: 5px;
+      padding: 8px;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
-
   <h1>Kalistenika</h1>
-  <div class="workout-day" id="today-day">Načítavam tréning...</div>
+
+  <select id="day-select"></select>
+
   <div id="exercise-list"></div>
-  <button onclick="submitWorkout()">💾 Uložiť progres</button>
+
+  <button class="submit-btn" onclick="submitWorkout()">💾 Uložiť progres</button>
+
   <div class="status" id="status"></div>
 
+  <div class="history">
+    <h3>🕓 História tohto týždňa</h3>
+    <div id="history-log"></div>
+  </div>
+
+  <script src="app.js"></script>
   <script>
-    const treningove_dni = {
-      "Deň 1 – Nohy + Core": ["Pistol squat", "Wall sit (60s)", "Calf raises", "Leg raises", "Plank (60s)"],
-      "Deň 2 – Hrudník + Triceps + L-sit": ["Incline push-ups", "Dipy", "Diamond push-ups", "L-sit (30s)", "Knee raises"],
-      "Deň 3 – Chrbát + Biceps": ["Pull-ups", "Negative muscle-ups", "Australian rows", "Chin-ups", "Dead hang (30s)"],
-      "Deň 4 – Beh + Ramena + Core": ["Pike push-ups", "Plank to push-up", "Shoulder taps", "Bird-dog"],
-      "Deň 5 – Hrudník + Nohy": ["Push-ups", "Dipy", "Wide push-ups", "Wall sit (60s)", "Leg raises"]
-    };
-
-    const days = Object.keys(treningove_dni);
-    const apiUrl = "https://script.google.com/macros/s/AKfycbwiDlSFZIVr5m9B98GXuXpXOEd43Cn4tY4Ug6MNWGB4ebMHTJDPxlVmda9ModBrNT06/exec";
-    const dayDisplay = document.getElementById("today-day");
-    const exerciseList = document.getElementById("exercise-list");
-    const status = document.getElementById("status");
-
-    async function getLastDayIndex() {
-      try {
-        const res = await fetch(apiUrl);
-        const data = await res.json();
-        if (!data || data.length === 0) return 0;
-
-        const last = data[data.length - 1].Day;
-        const index = days.findIndex(d => d === last);
-        return (index + 1) % days.length;
-      } catch {
-        return 0; // fallback to day 1
-      }
+    // PWA install
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
     }
-
-    function renderExercises(dayName) {
-      dayDisplay.textContent = dayName;
-      const exercises = treningove_dni[dayName];
-      exerciseList.innerHTML = "";
-
-      exercises.forEach(ex => {
-        const isTimer = ex.includes("(");
-        const name = ex.replace(/\s*\(.*?\)/, "");
-        const wrapper = document.createElement("div");
-        wrapper.className = "exercise";
-
-        const label = document.createElement("label");
-        label.textContent = ex;
-        const input = document.createElement("input");
-        input.id = `rep-${name}`;
-        input.type = "number";
-        input.min = 0;
-        input.placeholder = isTimer ? "sekundy" : "opakovania";
-
-        wrapper.appendChild(label);
-        wrapper.appendChild(input);
-        exerciseList.appendChild(wrapper);
-      });
-    }
-
-    async function init() {
-      const dayIndex = await getLastDayIndex();
-      const dayName = days[dayIndex];
-      renderExercises(dayName);
-    }
-
-    async function submitWorkout() {
-      const dayName = dayDisplay.textContent;
-      const exercises = treningove_dni[dayName];
-      const today = new Date().toISOString().split("T")[0];
-      let errors = 0;
-
-      for (const ex of exercises) {
-        const name = ex.replace(/\s*\(.*?\)/, "");
-        const reps = document.getElementById(`rep-${name}`).value || "0";
-        const data = {
-          Date: today,
-          Day: dayName,
-          Exercise: name,
-          Reps: reps
-        };
-        try {
-          await fetch(apiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify(data)
-          });
-        } catch {
-          errors++;
-        }
-      }
-
-      if (errors === 0) {
-        status.textContent = "✅ Progres uložený!";
-      } else {
-        status.textContent = "⚠️ Chyba pri ukladaní dát.";
-      }
-
-      setTimeout(() => status.textContent = "", 4000);
-    }
-
-    init();
   </script>
 </body>
 </html>
