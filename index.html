@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Calisthenics Tracker</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+    label { display: block; margin-top: 10px; }
+    input[type="number"] { width: 60px; }
+    button { margin-top: 20px; padding: 8px 16px; }
+  </style>
+</head>
+<body>
+  <h1>Calisthenics Tracker</h1>
+  <label for="day">Choose a day:</label>
+  <select id="day">
+    <option>Deň 1 – Nohy + Core</option>
+    <option>Deň 2 – Hrudník + Triceps + L-sit</option>
+    <option>Deň 3 – Chrbát + Biceps</option>
+    <option>Deň 4 – Beh + Ramena + Core</option>
+    <option>Deň 5 – Hrudník + Nohy</option>
+  </select>
+
+  <div id="exercises"></div>
+
+  <button onclick="submitWorkout()">💾 Uložiť progres</button>
+
+  <p id="status"></p>
+
+  <script>
+    const treningove_dni = {
+      "Deň 1 – Nohy + Core": ["Pistol squat", "Wall sit", "Calf raises", "Leg raises", "Plank"],
+      "Deň 2 – Hrudník + Triceps + L-sit": ["Incline push-ups", "Dipy", "Diamond push-ups", "L-sit", "Knee raises"],
+      "Deň 3 – Chrbát + Biceps": ["Pull-ups", "Negative muscle-ups", "Australian rows", "Chin-ups", "Dead hang"],
+      "Deň 4 – Beh + Ramena + Core": ["Pike push-ups", "Plank to push-up", "Shoulder taps", "Bird-dog"],
+      "Deň 5 – Hrudník + Nohy": ["Push-ups", "Dipy", "Wide push-ups", "Wall sit", "Leg raises"]
+    };
+
+    const apiUrl = "https://script.google.com/macros/s/AKfycbwiDlSFZIVr5m9B98GXuXpXOEd43Cn4tY4Ug6MNWGB4ebMHTJDPxlVmda9ModBrNT06/exec";
+
+    const daySelect = document.getElementById("day");
+    const exercisesDiv = document.getElementById("exercises");
+
+    daySelect.addEventListener("change", updateExercises);
+    window.onload = updateExercises;
+
+    function updateExercises() {
+      const selectedDay = daySelect.value;
+      const exercises = treningove_dni[selectedDay];
+      exercisesDiv.innerHTML = "";
+
+      exercises.forEach(ex => {
+        const label = document.createElement("label");
+        label.textContent = `${ex}:`;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = 0;
+        input.id = `rep-${ex}`;
+        exercisesDiv.appendChild(label);
+        exercisesDiv.appendChild(input);
+      });
+    }
+
+    function submitWorkout() {
+      const selectedDay = daySelect.value;
+      const exercises = treningove_dni[selectedDay];
+      const date = new Date().toISOString().split("T")[0];
+      const status = document.getElementById("status");
+
+      exercises.forEach(async (ex) => {
+        const reps = document.getElementById(`rep-${ex}`).value || 0;
+
+        const data = {
+          Date: date,
+          Day: selectedDay,
+          Exercise: ex,
+          Reps: parseInt(reps)
+        };
+
+        await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(data)
+        });
+      });
+
+      status.textContent = "✅ Progres uložený!";
+    }
+  </script>
+</body>
+</html>
