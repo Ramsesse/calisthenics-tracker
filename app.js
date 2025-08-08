@@ -64,21 +64,30 @@ async function fetchSheet(sheet) {
 async function postToSheet(sheet, data) {
   try {
     console.log(`Posting to ${sheet}:`, data);
+    showNotification(`Saving data to ${sheet}...`, 'info');
     
     if (appState.isOnline) {
-      // Try online first
-      const params = new URLSearchParams({
-        sheet: sheet,
-        action: 'save',
-        ...data  // Spread all data properties as URL parameters
-      });
+      // Try online first - use same method as successful test
+      const params = new URLSearchParams();
+      params.append('sheet', sheet);
+      params.append('action', 'save');
+      
+      // Add all data fields as parameters
+      for (const [key, value] of Object.entries(data)) {
+        params.append(key, value);
+      }
       
       const url = `${SHEETS_API}?${params.toString()}`;
       console.log('Full URL:', url);
       
       const response = await fetch(url, {
-        method: 'GET'  // Use GET instead of POST for better compatibility
+        method: 'GET',
+        mode: 'cors'
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       const result = await response.json();
       console.log(`Result for ${sheet}:`, result);
@@ -87,8 +96,12 @@ async function postToSheet(sheet, data) {
         throw new Error(`API Error: ${result.error}`);
       }
       
-      showNotification(`Data saved to ${sheet}!`, 'success');
-      return result;
+      if (result.success) {
+        showNotification(`✅ Data saved to ${sheet} successfully!`, 'success');
+        return result;
+      } else {
+        throw new Error('Save operation did not return success');
+      }
     } else {
       throw new Error('Online mode not available');
     }
@@ -275,38 +288,63 @@ async function handleBaseTestSubmit(e) {
   const exercises = ['pushups', 'pullups', 'squats', 'plank', 'situps', 'burpees'];
   const testDate = new Date().toISOString();
   
-  // Save each exercise result
-  for (const exercise of exercises) {
-    const maxReps = document.getElementById(exercise).value;
+  showNotification('Ukladá sa base test...', 'info');
+  
+  try {
+    // Save each exercise result
+    for (const exercise of exercises) {
+      const maxRepsInput = document.getElementById(exercise);
+      
+      if (!maxRepsInput || !maxRepsInput.value) {
+        showNotification(`Prosím vyplň všetky cvičenia. Chýba: ${exercise}`, 'error');
+        return;
+      }
+      
+      const maxReps = parseInt(maxRepsInput.value);
+      
+      if (maxReps < 1) {
+        showNotification(`Neplatná hodnota pre ${exercise}. Musí byť aspoň 1.`, 'error');
+        return;
+      }
+      
+      const baseTestData = {
+        id: Date.now() + Math.random(),
+        user_id: appState.currentUser,
+        exercise_name: exercise,
+        max_reps: maxReps,
+        test_date: testDate
+      };
+      
+      console.log(`Saving base test for ${exercise}:`, baseTestData);
+      await postToSheet('BaseTest', baseTestData);
+      
+      // Also create initial progression entry
+      const progressionData = {
+        id: Date.now() + Math.random() + 1,
+        user_id: appState.currentUser,
+        exercise_name: exercise,
+        level: 1,
+        max_reps: maxReps,
+        updated_at: testDate
+      };
+      
+      console.log(`Saving progression for ${exercise}:`, progressionData);
+      await postToSheet('Progressions', progressionData);
+      
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
     
-    const baseTestData = {
-      id: Date.now() + Math.random(),
-      user_id: appState.currentUser,
-      exercise_name: exercise,
-      max_reps: parseInt(maxReps),
-      test_date: testDate
-    };
+    showNotification('✅ Base test úspešne uložený! Načítava sa personalizovaný program...', 'success');
     
-    await postToSheet('BaseTest', baseTestData);
+    // Reload data and show main app
+    await loadAllTables();
+    initializeMainApp();
     
-    // Also create initial progression entry
-    const progressionData = {
-      id: Date.now() + Math.random() + 1,
-      user_id: appState.currentUser,
-      exercise_name: exercise,
-      level: 1,
-      max_reps: parseInt(maxReps),
-      updated_at: testDate
-    };
-    
-    await postToSheet('Progressions', progressionData);
+  } catch (error) {
+    console.error('Error saving base test:', error);
+    showNotification(`Chyba pri ukladaní base testu: ${error.message}`, 'error');
   }
-  
-  showNotification('Base test completed! Loading your personalized program...', 'success');
-  
-  // Reload data and show main app
-  await loadAllTables();
-  initializeMainApp();
 }
 
 // --- Progressions Logic ---
@@ -314,6 +352,148 @@ function calculateExpectedReps(exercise, currentLevel, baseTestReps) {
   // Each level increases expected reps by 20%
   const progressionMultiplier = 1 + (currentLevel - 1) * 0.2;
   return Math.ceil(baseTestReps * progressionMultiplier);
+}
+
+// --- Smart Value Calculation Functions ---
+function getRecommendedValues(exerciseName) {
+  const lastExercise = getLastExerciseHistory(exerciseName);
+  const baseTest = getUserBaseTest(exerciseName);
+  const progression = getUserProgression(exerciseName);
+  
+  let sets = 3;
+  let reps = 10;
+  let shouldUpgrade = false;
+  let upgradeMessage = '';
+  
+  // Check if exercise was done in the last 2 months
+  if (lastExercise) {
+    const lastDate = new Date(lastExercise.date);
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    
+    if (lastDate > twoMonthsAgo) {
+      // Exercise was done recently - use last values + 1
+      sets = lastExercise.sets;
+      reps = Math.min(lastExercise.reps + 1, 12);
+      
+      // Check if we should recommend progression
+      if (lastExercise.reps >= 12) {
+        shouldUpgrade = true;
+        upgradeMessage = `Dokážeš už ${lastExercise.reps} opakovaní! Čas prejsť na náročnejší variant tohto cviku.`;
+        reps = lastExercise.reps; // Don't add +1 if suggesting upgrade
+      }
+      
+      return { sets, reps, shouldUpgrade, upgradeMessage };
+    }
+  }
+  
+  // No recent history - use base test if available
+  if (baseTest && progression) {
+    const expectedReps = calculateExpectedReps(exerciseName, progression.level, baseTest.max_reps);
+    reps = Math.min(expectedReps, 12);
+    
+    if (expectedReps > 12) {
+      shouldUpgrade = true;
+      upgradeMessage = `Na základe base testu by si mal dokázať ${expectedReps} opakovaní. Odporúčame prejsť na náročnejší variant.`;
+      reps = 12;
+    }
+  }
+  
+  return { sets, reps, shouldUpgrade, upgradeMessage };
+}
+
+function getLastExerciseHistory(exerciseName) {
+  const userHistory = appState.userHistory.filter(h => 
+    h.user_id === appState.currentUser && 
+    (h.exercise_name === exerciseName || h.exercise_name.toLowerCase().includes(exerciseName.toLowerCase()))
+  );
+  
+  if (userHistory.length === 0) return null;
+  
+  // Return the most recent exercise
+  return userHistory.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+}
+
+function getExerciseProgressInfo(exerciseName) {
+  const lastExercise = getLastExerciseHistory(exerciseName);
+  const baseTest = getUserBaseTest(exerciseName);
+  const progression = getUserProgression(exerciseName);
+  
+  let info = [];
+  
+  if (baseTest) {
+    info.push(`🎯 Base test: ${baseTest.max_reps} opakovaní`);
+  }
+  
+  if (lastExercise) {
+    const daysSince = Math.floor((new Date() - new Date(lastExercise.date)) / (1000 * 60 * 60 * 24));
+    info.push(`📅 Naposledy: ${lastExercise.sets}×${lastExercise.reps} (pred ${daysSince} dňami)`);
+  }
+  
+  if (progression) {
+    info.push(`📈 Úroveň: ${progression.level}`);
+  }
+  
+  return info.length > 0 ? info.join(' | ') : '🆕 Nový cvik';
+}
+
+function getSuggestedProgressions(currentExercise) {
+  // Exercise progression mapping
+  const progressions = {
+    'push-ups': ['incline push-ups', 'regular push-ups', 'decline push-ups', 'one-arm push-ups'],
+    'pull-ups': ['assisted pull-ups', 'negative pull-ups', 'regular pull-ups', 'weighted pull-ups'],
+    'squats': ['wall squats', 'regular squats', 'jump squats', 'pistol squats'],
+    'plank': ['knee plank', 'regular plank', 'side plank', 'plank variations'],
+    'sit-ups': ['crunches', 'sit-ups', 'bicycle crunches', 'hanging leg raises'],
+    'burpees': ['modified burpees', 'regular burpees', 'burpee variations', 'weighted burpees']
+  };
+  
+  const exerciseKey = currentExercise.toLowerCase().replace(/[^a-z]/g, '');
+  
+  for (const [key, progression] of Object.entries(progressions)) {
+    if (exerciseKey.includes(key.replace('-', ''))) {
+      return progression;
+    }
+  }
+  
+  return [];
+}
+
+// Update progression logic to handle upgrades
+async function updateProgression(workoutEntry) {
+  const progression = getUserProgression(workoutEntry.exercise_name);
+  
+  if (!progression) {
+    // Create new progression entry
+    const newProgression = {
+      id: Date.now() + Math.random(),
+      user_id: appState.currentUser,
+      exercise_name: workoutEntry.exercise_name,
+      level: 1,
+      max_reps: workoutEntry.reps,
+      updated_at: new Date().toISOString()
+    };
+    
+    await postToSheet('Progressions', newProgression);
+    return;
+  }
+  
+  // Check if user improved
+  if (workoutEntry.reps > progression.max_reps) {
+    const updatedProgression = {
+      ...progression,
+      max_reps: workoutEntry.reps,
+      updated_at: new Date().toISOString()
+    };
+    
+    // If user can do more than 12 reps consistently, suggest level up
+    if (workoutEntry.reps >= 12) {
+      updatedProgression.level = progression.level + 1;
+      showNotification(`🎉 Gratulujeme! Postúpil si na úroveň ${updatedProgression.level} v cviku ${workoutEntry.exercise_name}!`, 'success');
+    }
+    
+    await postToSheet('Progressions', updatedProgression);
+  }
 }
 
 function getUserProgression(exerciseName) {
@@ -357,10 +537,13 @@ function initializeMainApp() {
           ➕ Pridať 5-dňový plán
         </button>
         <button onclick="addOfflineTrainingPlan()" style="background: #1f6feb; margin-right: 10px;">
-          📱 Pridať plán offline
+          📱 Použiť offline dáta
         </button>
-        <button onclick="location.reload()" style="background: #6f42c1;">
-          🔄 Obnoviť dáta
+        <button onclick="loadAllTables().then(() => renderWorkoutSection())" style="background: #6f42c1; margin-right: 10px;">
+          🔄 Obnoviť z Google Sheets
+        </button>
+        <button onclick="debugAppState()" style="background: #f85149;">
+          🔧 Debug dáta
         </button>
       </div>
       <div id="connection-status" style="margin-bottom: 1rem; padding: 10px; border-radius: 6px;"></div>
@@ -421,12 +604,26 @@ function populatePlans() {
   const planSelect = document.getElementById('plan-select');
   if (!planSelect) return;
   
+  console.log('=== DEBUG populatePlans ===');
+  console.log('Available plans:', appState.plans);
+  
   planSelect.innerHTML = '<option value="">Vyber tréningový plán</option>';
+  
+  if (appState.plans.length === 0) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = '❌ Žiadne plány nenájdené - načítaj dáta';
+    option.disabled = true;
+    planSelect.appendChild(option);
+    return;
+  }
+  
   appState.plans.forEach(plan => {
     const option = document.createElement('option');
     option.value = plan.PlanID || plan.id; // Handle both PlanID and id
     option.textContent = plan.Name || plan.name; // Handle both Name and name
     planSelect.appendChild(option);
+    console.log('Added plan:', { value: option.value, text: option.textContent });
   });
   
   planSelect.addEventListener('change', populateExercises);
@@ -470,6 +667,9 @@ function populateDays() {
   const daySelect = document.getElementById('day-select');
   if (!daySelect) return;
   
+  console.log('=== DEBUG populateDays ===');
+  console.log('Plan exercises for days:', appState.planExercises);
+  
   // Map day numbers to Slovak training day names
   const dayMapping = {
     1: 'Deň 1 – Nohy + Core',
@@ -483,17 +683,36 @@ function populateDays() {
   
   daySelect.innerHTML = '<option value="">Vyber deň</option>';
   
-  // Get unique days from plan exercises
-  const uniqueDays = [...new Set(appState.planExercises.map(ex => ex.Day))];
+  if (appState.planExercises.length === 0) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = '❌ Žiadne cvičenia nenájdené';
+    option.disabled = true;
+    daySelect.appendChild(option);
+    return;
+  }
   
-  uniqueDays.sort((a, b) => a - b).forEach(dayNum => {
-    if (dayMapping[dayNum]) {
+  // Get unique days from plan exercises
+  const uniqueDays = [...new Set(appState.planExercises.map(ex => ex.Day || ex.day))];
+  console.log('Unique days found:', uniqueDays);
+  
+  if (uniqueDays.length === 0) {
+    // Add default days 1-5 if no data
+    [1, 2, 3, 4, 5].forEach(dayNum => {
       const option = document.createElement('option');
-      option.value = dayNum; // Use number for filtering
-      option.textContent = dayMapping[dayNum];
+      option.value = dayNum;
+      option.textContent = dayMapping[dayNum] || `Deň ${dayNum}`;
       daySelect.appendChild(option);
-    }
-  });
+    });
+  } else {
+    uniqueDays.sort((a, b) => a - b).forEach(dayNum => {
+      const option = document.createElement('option');
+      option.value = dayNum;
+      option.textContent = dayMapping[dayNum] || `Deň ${dayNum}`;
+      daySelect.appendChild(option);
+      console.log('Added day:', { value: dayNum, text: option.textContent });
+    });
+  }
   
   daySelect.addEventListener('change', populateExercises);
 }
@@ -508,20 +727,65 @@ function populateExercises() {
   const selectedPlan = planSelect.value;
   const selectedDay = daySelect.value;
   
+  console.log('=== DEBUG populateExercises ===');
+  console.log('Selected plan:', selectedPlan);
+  console.log('Selected day:', selectedDay);
+  console.log('Total planExercises:', appState.planExercises.length);
+  console.log('Plan exercises sample:', appState.planExercises.slice(0, 3));
+  
   if (!selectedPlan || !selectedDay) {
     exerciseList.innerHTML = '<p>Prosím vyber tréningový plán aj deň.</p>';
     return;
   }
   
-  // Handle both day number and day name formats
+  // Debug: Check what we're filtering
+  const allMatches = appState.planExercises.map(ex => {
+    const planMatch = (ex.PlanID == selectedPlan || ex.plan_id == selectedPlan);
+    const dayMatch = (ex.Day == selectedDay || ex.day == selectedDay);
+    
+    return {
+      exercise: ex.ExerciseName || ex.exercise_name,
+      planID: ex.PlanID || ex.plan_id,
+      day: ex.Day || ex.day,
+      planMatch,
+      dayMatch,
+      bothMatch: planMatch && dayMatch
+    };
+  });
+  
+  console.log('Filter matches:', allMatches);
+  
+  // Simple filtering with exact matches
   const exercises = appState.planExercises.filter(ex => {
     const planMatch = (ex.PlanID == selectedPlan || ex.plan_id == selectedPlan);
-    const dayMatch = (getDayName(ex.Day) === selectedDay || getDayNumber(ex.day) == getDayNumber(selectedDay) || ex.day === selectedDay);
+    const dayMatch = (ex.Day == selectedDay || ex.day == selectedDay);
     return planMatch && dayMatch;
   });
   
+  console.log('Filtered exercises:', exercises);
+  
   if (exercises.length === 0) {
-    exerciseList.innerHTML = '<p>Žiadne cviky neboli nájdené pre tento plán a deň.</p>';
+    exerciseList.innerHTML = `
+      <div style="padding: 20px; background: #161b22; border-radius: 6px; margin: 10px 0;">
+        <p><strong>🔍 Debug Info:</strong></p>
+        <p>Selected Plan ID: ${selectedPlan}</p>
+        <p>Selected Day: ${selectedDay}</p>
+        <p>Total exercises in database: ${appState.planExercises.length}</p>
+        <p>Available plan IDs: ${[...new Set(appState.planExercises.map(ex => ex.PlanID || ex.plan_id))].join(', ')}</p>
+        <p>Available days: ${[...new Set(appState.planExercises.map(ex => ex.Day || ex.day))].join(', ')}</p>
+        <hr style="margin: 10px 0; border: 1px solid #30363d;">
+        <p><strong>❌ Žiadne cviky neboli nájdené pre tento plán a deň.</strong></p>
+        <p>Možné príčiny:</p>
+        <ul>
+          <li>Plán neobsahuje cvičenia pre tento deň</li>
+          <li>Dáta sa ešte nenačítali z databázy</li>
+          <li>Problém s formátom dát (PlanID vs plan_id, Day vs day)</li>
+        </ul>
+        <button onclick="loadAllTables().then(() => renderWorkoutSection())" style="margin-top: 10px;">
+          🔄 Znovu načítať dáta
+        </button>
+      </div>
+    `;
     return;
   }
   
@@ -613,34 +877,6 @@ async function submitWorkout() {
   await loadAllTables();
   if (document.getElementById('section-history').style.display !== 'none') {
     renderHistory();
-  }
-}
-
-async function updateProgression(workoutEntry) {
-  const progression = getUserProgression(workoutEntry.exercise_name);
-  const baseTest = getUserBaseTest(workoutEntry.exercise_name);
-  
-  if (!progression || !baseTest) return;
-  
-  const currentExpected = calculateExpectedReps(
-    workoutEntry.exercise_name,
-    progression.level,
-    baseTest.max_reps
-  );
-  
-  // If user performed significantly better, level up
-  if (workoutEntry.reps >= currentExpected * 1.5) {
-    const newProgressionData = {
-      id: progression.id,
-      user_id: appState.currentUser,
-      exercise_name: workoutEntry.exercise_name,
-      level: progression.level + 1,
-      max_reps: Math.max(progression.max_reps, workoutEntry.reps),
-      updated_at: new Date().toISOString()
-    };
-    
-    await postToSheet('Progressions', newProgressionData);
-    showNotification(`🎉 Level up in ${workoutEntry.exercise_name}! Now level ${progression.level + 1}`, 'success');
   }
 }
 
@@ -774,6 +1010,26 @@ function getMondayDate(date) {
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   return new Date(d.setHours(0,0,0,0) && d.setDate(diff));
+}
+
+function debugAppState() {
+  console.log('=== APP STATE DEBUG ===');
+  console.log('Plans:', appState.plans);
+  console.log('Plan Exercises:', appState.planExercises);
+  console.log('User History:', appState.userHistory);
+  console.log('Base Test:', appState.baseTest);
+  console.log('Progressions:', appState.progressions);
+  console.log('Is Online:', appState.isOnline);
+  console.log('Offline Storage Available:', !!appState.offlineStorage);
+  
+  showNotification(`
+    📊 Debug Info (pozri konzolu):
+    • Plans: ${appState.plans.length}
+    • Exercises: ${appState.planExercises.length}
+    • History: ${appState.userHistory.length}
+    • Base Test: ${appState.baseTest.length}
+    • Online: ${appState.isOnline ? 'Áno' : 'Nie'}
+  `, 'info');
 }
 
 // --- Add Offline Training Plan Function ---

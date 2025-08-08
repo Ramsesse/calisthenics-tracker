@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Google Apps Script API</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #0d1117; color: #e6edf3; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .log { background: #161b22; padding: 15px; border-radius: 6px; margin: 10px 0; }
+        .success { color: #3fb950; }
+        .error { color: #f85149; }
+        .info { color: #58a6ff; }
+        .warning { color: #f85149; }
+        button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2ea043; }
+        pre { background: #161b22; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
+        input { background: #21262d; color: #e6edf3; border: 1px solid #30363d; padding: 8px; border-radius: 4px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug Google Apps Script API</h1>
+        
+        <div style="margin: 20px 0;">
+            <label>API URL:</label>
+            <input type="text" id="apiUrl" value="https://script.google.com/macros/s/AKfycbwiDlSFZIVr5m9B98GXuXpXOEd43Cn4tY4Ug6MNWGB4ebMHTJDPxlVmda9ModBrNT06/exec" style="width: 80%;">
+        </div>
+        
+        <div>
+            <button onclick="testBasicConnection()">🌐 Test základného pripojenia</button>
+            <button onclick="testReadData()">📖 Test čítania dát</button>
+            <button onclick="testSaveData()">💾 Test ukladania dát</button>
+            <button onclick="testCORS()">🔒 Test CORS</button>
+            <button onclick="clearLogs()">🗑️ Vymazať logy</button>
+        </div>
+        
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info', details = null) {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            
+            let content = `[${new Date().toLocaleTimeString()}] ${message}`;
+            if (details) {
+                content += '\n' + JSON.stringify(details, null, 2);
+            }
+            
+            logDiv.innerHTML = `<pre>${content}</pre>`;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message, details);
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value;
+        }
+        
+        async function testBasicConnection() {
+            log("🌐 Testujem základné pripojenie...", 'info');
+            
+            try {
+                const response = await fetch(getApiUrl(), {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                log(`Response status: ${response.status} ${response.statusText}`, 'info');
+                log('Response headers:', 'info', Object.fromEntries(response.headers.entries()));
+                
+                const text = await response.text();
+                log('Response body:', 'info', text.substring(0, 500) + (text.length > 500 ? '...' : ''));
+                
+                if (response.ok) {
+                    log("✅ Základné pripojenie funguje", 'success');
+                } else {
+                    log("❌ Základné pripojenie zlyhalo", 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Network error: ${error.message}`, 'error', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+        }
+        
+        async function testReadData() {
+            log("📖 Testujem čítanie dát...", 'info');
+            
+            try {
+                const url = `${getApiUrl()}?sheet=TrainingPlans`;
+                log(`URL: ${url}`, 'info');
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                log(`Response status: ${response.status}`, 'info');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log("✅ Čítanie dát úspešné!", 'success', data);
+                } else {
+                    const text = await response.text();
+                    log("❌ Chyba pri čítaní dát", 'error', text);
+                }
+                
+            } catch (error) {
+                log(`❌ Chyba: ${error.message}`, 'error', error);
+            }
+        }
+        
+        async function testSaveData() {
+            log("💾 Testujem ukladanie dát...", 'info');
+            
+            const testData = {
+                sheet: 'TrainingPlans',
+                action: 'save',
+                PlanID: 999,
+                UserID: 1,
+                Name: 'Test Plan API',
+                Description: 'Test plan created via API',
+                DifficultyLevel: 'Beginner',
+                DurationWeeks: 1
+            };
+            
+            try {
+                // Method 1: GET with URL parameters
+                log("Skúšam Method 1: GET s URL parametrami", 'info');
+                const params = new URLSearchParams(testData);
+                const url = `${getApiUrl()}?${params.toString()}`;
+                
+                const response1 = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                log(`GET Response status: ${response1.status}`, 'info');
+                
+                if (response1.ok) {
+                    const result1 = await response1.json();
+                    log("✅ GET method úspešný!", 'success', result1);
+                } else {
+                    const text1 = await response1.text();
+                    log("❌ GET method neúspešný", 'error', text1);
+                    
+                    // Method 2: POST with JSON body
+                    log("Skúšam Method 2: POST s JSON body", 'info');
+                    try {
+                        const response2 = await fetch(getApiUrl(), {
+                            method: 'POST',
+                            mode: 'cors',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(testData)
+                        });
+                        
+                        log(`POST Response status: ${response2.status}`, 'info');
+                        
+                        if (response2.ok) {
+                            const result2 = await response2.json();
+                            log("✅ POST method úspešný!", 'success', result2);
+                        } else {
+                            const text2 = await response2.text();
+                            log("❌ POST method neúspešný", 'error', text2);
+                        }
+                        
+                    } catch (postError) {
+                        log(`❌ POST error: ${postError.message}`, 'error', postError);
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Celková chyba: ${error.message}`, 'error', error);
+            }
+        }
+        
+        async function testCORS() {
+            log("🔒 Testujem CORS nastavenia...", 'info');
+            
+            try {
+                const response = await fetch(getApiUrl(), {
+                    method: 'OPTIONS',
+                    mode: 'cors'
+                });
+                
+                log(`OPTIONS Response status: ${response.status}`, 'info');
+                log('CORS headers:', 'info', {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                });
+                
+            } catch (error) {
+                log(`❌ CORS test error: ${error.message}`, 'error', error);
+            }
+        }
+        
+        // Auto-run basic test on load
+        window.onload = function() {
+            log("🚀 Debug tool načítaný", 'info');
+            setTimeout(testBasicConnection, 1000);
+        };
+    </script>
+</body>
+</html>

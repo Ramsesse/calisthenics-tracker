@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Apps Script Debug Tool - ROBUST Version</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007ACC;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 3px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            border-color: #4CAF50;
+            background-color: #f1f8e9;
+        }
+        .error {
+            border-color: #f44336;
+            background-color: #ffebee;
+        }
+        .status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .info {
+            background: #e3f2fd;
+            border: 1px solid #2196F3;
+            padding: 10px;
+            border-radius: 3px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Google Apps Script Debug Tool - ROBUST Version</h1>
+        
+        <div class="info">
+            <strong>Inštrukcie:</strong>
+            <ol>
+                <li>Skopíruj obsah súboru <code>google-apps-script-ROBUST.js</code> do Google Apps Script</li>
+                <li>Nasaď ako webovú aplikáciu (Execute as: Me, Who has access: Anyone)</li>
+                <li>Vlož URL do poľa nižšie</li>
+                <li>Klikni na testy pre diagnostiku problémov</li>
+            </ol>
+        </div>
+
+        <div class="form-group">
+            <label for="apiUrl">Google Apps Script Web App URL:</label>
+            <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" 
+                   value="https://script.google.com/macros/s/AKfycbwiDlSFZIVr5m9B98GXuXpXOEd43Cn4tY4Ug6MNWGB4ebMHTJDPxlVmda9ModBrNT06/exec">
+        </div>
+    </div>
+
+    <!-- Test 1: Basic Connection -->
+    <div class="container test-section">
+        <h2>🌐 Test 1: Základné pripojenie</h2>
+        <p>Testuje základnú komunikáciu s API a CORS nastavenia.</p>
+        <button onclick="testBasicConnection()">Spustiť Test Pripojenia</button>
+        <div id="connection-result" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Test 2: API Info -->
+    <div class="container test-section">
+        <h2>ℹ️ Test 2: API Informácie</h2>
+        <p>Získa základné informácie o API bez parametrov.</p>
+        <button onclick="testApiInfo()">Získať API Info</button>
+        <div id="api-info-result" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Test 3: Read Data -->
+    <div class="container test-section">
+        <h2>📖 Test 3: Čítanie dát</h2>
+        <p>Testuje čítanie dát z Google Sheets.</p>
+        
+        <div class="form-group">
+            <label for="readSheet">Názov sheet-u:</label>
+            <select id="readSheet">
+                <option value="TrainingPlans">TrainingPlans</option>
+                <option value="UserHistory">UserHistory</option>
+                <option value="BaseTest">BaseTest</option>
+                <option value="Progressions">Progressions</option>
+                <option value="Equipment">Equipment</option>
+            </select>
+        </div>
+        
+        <button onclick="testReadData()">Čítať Dáta</button>
+        <div id="read-result" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Test 4: Save Data -->
+    <div class="container test-section">
+        <h2>💾 Test 4: Ukladanie dát</h2>
+        <p>Testuje ukladanie nových dát do Google Sheets.</p>
+        
+        <div class="form-group">
+            <label for="saveSheet">Názov sheet-u:</label>
+            <select id="saveSheet">
+                <option value="TrainingPlans">TrainingPlans</option>
+                <option value="UserHistory">UserHistory</option>
+                <option value="BaseTest">BaseTest</option>
+                <option value="Progressions">Progressions</option>
+                <option value="Equipment">Equipment</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="saveData">Test dáta (JSON):</label>
+            <textarea id="saveData" placeholder='{"PlanID": 999, "UserID": 1, "Name": "Test Plan"}'>{
+  "PlanID": 999,
+  "UserID": 1,
+  "Name": "API Test Plan",
+  "Description": "Testovací plán vytvorený cez API",
+  "DifficultyLevel": "Beginner",
+  "DurationWeeks": 1
+}</textarea>
+        </div>
+        
+        <button onclick="testSaveData()">Uložiť Dáta</button>
+        <div id="save-result" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Test 5: Error Testing -->
+    <div class="container test-section">
+        <h2>⚠️ Test 5: Error Handling</h2>
+        <p>Testuje ako API spracováva chybové situácie.</p>
+        
+        <button onclick="testInvalidSheet()">Test Neexistujúci Sheet</button>
+        <button onclick="testInvalidData()">Test Neplatné Dáta</button>
+        <button onclick="testMissingParams()">Test Chýbajúce Parametre</button>
+        
+        <div id="error-result" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Test 6: Performance -->
+    <div class="container test-section">
+        <h2>⚡ Test 6: Výkon</h2>
+        <p>Meria časy odozvy API.</p>
+        
+        <button onclick="testPerformance()">Merať Výkon</button>
+        <div id="performance-result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        function getApiUrl() {
+            const url = document.getElementById('apiUrl').value.trim();
+            if (!url) {
+                throw new Error('Zadajte URL Google Apps Script API');
+            }
+            return url;
+        }
+
+        function showResult(elementId, content, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${isSuccess ? 'success' : 'error'}`;
+            element.textContent = content;
+        }
+
+        async function testBasicConnection() {
+            const resultId = 'connection-result';
+            showResult(resultId, 'Testuje sa pripojenie...', true);
+
+            try {
+                const url = getApiUrl();
+                console.log('Testing connection to:', url);
+
+                const startTime = Date.now();
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+
+                const result = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    duration: `${duration}ms`,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    ok: response.ok,
+                    redirected: response.redirected,
+                    url: response.url
+                };
+
+                if (response.ok) {
+                    try {
+                        const data = await response.text();
+                        console.log('Response data:', data);
+                        
+                        // Try to parse as JSON
+                        try {
+                            const jsonData = JSON.parse(data);
+                            result.data = jsonData;
+                            result.dataType = 'JSON';
+                        } catch {
+                            result.data = data.substring(0, 500) + (data.length > 500 ? '...' : '');
+                            result.dataType = 'Text/HTML';
+                        }
+
+                        showResult(resultId, JSON.stringify(result, null, 2), true);
+                    } catch (dataError) {
+                        result.error = `Chyba pri čítaní odpovede: ${dataError.message}`;
+                        showResult(resultId, JSON.stringify(result, null, 2), false);
+                    }
+                } else {
+                    const errorText = await response.text();
+                    result.error = errorText;
+                    showResult(resultId, JSON.stringify(result, null, 2), false);
+                }
+
+            } catch (error) {
+                console.error('Connection test error:', error);
+                showResult(resultId, `Chyba pripojenia: ${error.message}`, false);
+            }
+        }
+
+        async function testApiInfo() {
+            const resultId = 'api-info-result';
+            showResult(resultId, 'Získavajú sa API informácie...', true);
+
+            try {
+                const url = getApiUrl();
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult(resultId, JSON.stringify(data, null, 2), true);
+                } else {
+                    const errorText = await response.text();
+                    showResult(resultId, `HTTP ${response.status}: ${errorText}`, false);
+                }
+
+            } catch (error) {
+                showResult(resultId, `Chyba: ${error.message}`, false);
+            }
+        }
+
+        async function testReadData() {
+            const resultId = 'read-result';
+            const sheet = document.getElementById('readSheet').value;
+            
+            showResult(resultId, `Čítajú sa dáta z ${sheet}...`, true);
+
+            try {
+                const url = getApiUrl();
+                const requestUrl = `${url}?sheet=${encodeURIComponent(sheet)}`;
+                
+                console.log('Reading from:', requestUrl);
+
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const result = {
+                        sheet: sheet,
+                        recordCount: Array.isArray(data) ? data.length : 'Unknown',
+                        data: data
+                    };
+                    showResult(resultId, JSON.stringify(result, null, 2), true);
+                } else {
+                    const errorText = await response.text();
+                    showResult(resultId, `HTTP ${response.status}: ${errorText}`, false);
+                }
+
+            } catch (error) {
+                showResult(resultId, `Chyba: ${error.message}`, false);
+            }
+        }
+
+        async function testSaveData() {
+            const resultId = 'save-result';
+            const sheet = document.getElementById('saveSheet').value;
+            const dataText = document.getElementById('saveData').value;
+            
+            showResult(resultId, `Ukladajú sa dáta do ${sheet}...`, true);
+
+            try {
+                const testData = JSON.parse(dataText);
+                
+                // Prepare URL with GET parameters
+                const url = getApiUrl();
+                const params = new URLSearchParams();
+                params.append('sheet', sheet);
+                params.append('action', 'save');
+                
+                // Add data fields as parameters
+                for (const [key, value] of Object.entries(testData)) {
+                    params.append(key, value);
+                }
+                
+                const requestUrl = `${url}?${params.toString()}`;
+                console.log('Saving to:', requestUrl);
+
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showResult(resultId, JSON.stringify(result, null, 2), true);
+                } else {
+                    const errorText = await response.text();
+                    showResult(resultId, `HTTP ${response.status}: ${errorText}`, false);
+                }
+
+            } catch (parseError) {
+                showResult(resultId, `Chyba pri parsovaní JSON: ${parseError.message}`, false);
+            } catch (error) {
+                showResult(resultId, `Chyba: ${error.message}`, false);
+            }
+        }
+
+        async function testInvalidSheet() {
+            const resultId = 'error-result';
+            showResult(resultId, 'Testuje sa neexistujúci sheet...', true);
+
+            try {
+                const url = getApiUrl();
+                const requestUrl = `${url}?sheet=NonExistentSheet123`;
+                
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                const data = await response.text();
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(data);
+                } catch {
+                    parsedData = data;
+                }
+
+                const result = {
+                    test: 'Invalid Sheet',
+                    status: response.status,
+                    response: parsedData
+                };
+
+                showResult(resultId, JSON.stringify(result, null, 2), response.ok);
+
+            } catch (error) {
+                showResult(resultId, `Chyba: ${error.message}`, false);
+            }
+        }
+
+        async function testInvalidData() {
+            const resultId = 'error-result';
+            showResult(resultId, 'Testujú sa neplatné dáta...', true);
+
+            try {
+                const url = getApiUrl();
+                const params = new URLSearchParams();
+                params.append('sheet', 'TrainingPlans');
+                params.append('action', 'save');
+                // Intentionally missing required data
+                
+                const requestUrl = `${url}?${params.toString()}`;
+                
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                const data = await response.text();
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(data);
+                } catch {
+                    parsedData = data;
+                }
+
+                const result = {
+                    test: 'Invalid Data',
+                    status: response.status,
+                    response: parsedData
+                };
+
+                showResult(resultId, JSON.stringify(result, null, 2), true);
+
+            } catch (error) {
+                showResult(resultId, `Chyba: ${error.message}`, false);
+            }
+        }
+
+        async function testMissingParams() {
+            const resultId = 'error-result';
+            showResult(resultId, 'Testujú sa chýbajúce parametre...', true);
+
+            try {
+                const url = getApiUrl();
+                // No parameters at all
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                const data = await response.text();
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(data);
+                } catch {
+                    parsedData = data;
+                }
+
+                const result = {
+                    test: 'Missing Parameters',
+                    status: response.status,
+                    response: parsedData
+                };
+
+                showResult(resultId, JSON.stringify(result, null, 2), true);
+
+            } catch (error) {
+                showResult(resultId, `Chyba: ${error.message}`, false);
+            }
+        }
+
+        async function testPerformance() {
+            const resultId = 'performance-result';
+            showResult(resultId, 'Meria sa výkon API...', true);
+
+            const tests = [
+                { name: 'Basic Info', url: '' },
+                { name: 'Read TrainingPlans', url: '?sheet=TrainingPlans' },
+                { name: 'Read UserHistory', url: '?sheet=UserHistory' }
+            ];
+
+            const results = [];
+
+            try {
+                const baseUrl = getApiUrl();
+
+                for (const test of tests) {
+                    const startTime = Date.now();
+                    
+                    try {
+                        const response = await fetch(baseUrl + test.url, {
+                            method: 'GET',
+                            mode: 'cors'
+                        });
+                        
+                        await response.text(); // Read response
+                        const endTime = Date.now();
+                        
+                        results.push({
+                            test: test.name,
+                            duration: `${endTime - startTime}ms`,
+                            status: response.status,
+                            success: response.ok
+                        });
+                        
+                    } catch (error) {
+                        const endTime = Date.now();
+                        results.push({
+                            test: test.name,
+                            duration: `${endTime - startTime}ms`,
+                            error: error.message,
+                            success: false
+                        });
+                    }
+                }
+
+                showResult(resultId, JSON.stringify(results, null, 2), true);
+
+            } catch (error) {
+                showResult(resultId, `Chyba: ${error.message}`, false);
+            }
+        }
+    </script>
+</body>
+</html>

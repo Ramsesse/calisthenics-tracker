@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Data Entry for Google Sheets</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #0d1117; color: #e6edf3; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { background: #161b22; padding: 20px; border-radius: 6px; margin: 20px 0; }
+        .exercise-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .exercise-card { background: #21262d; padding: 15px; border-radius: 6px; border: 1px solid #30363d; }
+        .day-header { background: #238636; color: white; padding: 10px; border-radius: 6px; margin: 10px 0; }
+        button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2ea043; }
+        .copy-button { background: #1f6feb; }
+        .copy-button:hover { background: #388bfd; }
+        textarea { width: 100%; height: 150px; background: #21262d; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 10px; }
+        .info { color: #58a6ff; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Manuálne pridanie dát do Google Sheets</h1>
+        <p class="info">Keďže Google Apps Script API nefunguje, môžeš manuálne pridať tieto dáta do svojich Google Sheets.</p>
+        
+        <div class="section">
+            <h2>🏋️ TrainingPlans Sheet</h2>
+            <p>Skopíruj tento riadok do svojho Google Sheets do tabulky "TrainingPlans":</p>
+            <textarea id="trainingPlansData" readonly>
+PlanID	UserID	Name	Description	DifficultyLevel	DurationWeeks
+2	1	Kompletný 5-dňový plán	Profesionálny tréningový plán pre rozvoj sily a vytrvalosti	Intermediate	8</textarea>
+            <button class="copy-button" onclick="copyToClipboard('trainingPlansData')">📋 Kopírovať TrainingPlans</button>
+        </div>
+
+        <div class="section">
+            <h2>💪 TrainingPlanExercises Sheet</h2>
+            <p>Skopíruj tieto dáta do svojho Google Sheets do tabulky "TrainingPlanExercises":</p>
+            
+            <div class="exercise-grid">
+                <div class="exercise-card">
+                    <div class="day-header">Deň 1 – Nohy + Core</div>
+                    <ul>
+                        <li>Pistol squat (5 opakovaní)</li>
+                        <li>Wall sit (30 sekúnd)</li>
+                        <li>Calf raises (15 opakovaní)</li>
+                        <li>Leg raises (10 opakovaní)</li>
+                        <li>Plank (30 sekúnd)</li>
+                    </ul>
+                </div>
+                
+                <div class="exercise-card">
+                    <div class="day-header">Deň 2 – Hrudník + Triceps + L-sit</div>
+                    <ul>
+                        <li>Incline push-ups (12 opakovaní)</li>
+                        <li>Dipy (8 opakovaní)</li>
+                        <li>Diamond push-ups (8 opakovaní)</li>
+                        <li>L-sit (15 sekúnd)</li>
+                        <li>Knee raises (10 opakovaní)</li>
+                    </ul>
+                </div>
+                
+                <div class="exercise-card">
+                    <div class="day-header">Deň 3 – Chrbát + Biceps</div>
+                    <ul>
+                        <li>Pull-ups (6 opakovaní)</li>
+                        <li>Negative muscle-ups (3 opakovania)</li>
+                        <li>Australian rows (10 opakovaní)</li>
+                        <li>Chin-ups (6 opakovaní)</li>
+                        <li>Dead hang (20 sekúnd)</li>
+                    </ul>
+                </div>
+                
+                <div class="exercise-card">
+                    <div class="day-header">Deň 4 – Ramena + Core</div>
+                    <ul>
+                        <li>Pike push-ups (8 opakovaní)</li>
+                        <li>Plank to push-up (8 opakovaní)</li>
+                        <li>Shoulder taps (16 opakovaní)</li>
+                        <li>Bird-dog (10 opakovaní)</li>
+                    </ul>
+                </div>
+                
+                <div class="exercise-card">
+                    <div class="day-header">Deň 5 – Hrudník + Nohy</div>
+                    <ul>
+                        <li>Push-ups (12 opakovaní)</li>
+                        <li>Dipy (8 opakovaní)</li>
+                        <li>Wide push-ups (10 opakovaní)</li>
+                        <li>Wall sit (30 sekúnd)</li>
+                        <li>Leg raises (10 opakovaní)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <textarea id="exercisesData" readonly>PlanID	Day	ExerciseName	Sets	Reps	RestSeconds	MuscleGroup	EquipmentRequired
+2	1	Pistol squat	3	5	60	Legs	None
+2	1	Wall sit	3	30	60	Legs	None
+2	1	Calf raises	3	15	60	Legs	None
+2	1	Leg raises	3	10	60	Core	None
+2	1	Plank	3	30	60	Core	None
+2	2	Incline push-ups	3	12	60	Chest	None
+2	2	Dipy	3	8	60	Triceps	Parallel bars or chair
+2	2	Diamond push-ups	3	8	60	Chest/Triceps	None
+2	2	L-sit	3	15	60	Core	None
+2	2	Knee raises	3	10	60	Core	None
+2	3	Pull-ups	3	6	60	Back	Pull-up bar
+2	3	Negative muscle-ups	3	3	60	Back/Arms	Pull-up bar
+2	3	Australian rows	3	10	60	Back	Low bar
+2	3	Chin-ups	3	6	60	Back/Biceps	Pull-up bar
+2	3	Dead hang	3	20	60	Back/Grip	Pull-up bar
+2	4	Pike push-ups	3	8	60	Shoulders	None
+2	4	Plank to push-up	3	8	60	Core/Chest	None
+2	4	Shoulder taps	3	16	60	Shoulders/Core	None
+2	4	Bird-dog	3	10	60	Core	None
+2	5	Push-ups	3	12	60	Chest	None
+2	5	Dipy	3	8	60	Triceps	Parallel bars or chair
+2	5	Wide push-ups	3	10	60	Chest	None
+2	5	Wall sit	3	30	60	Legs	None
+2	5	Leg raises	3	10	60	Core	None</textarea>
+            <button class="copy-button" onclick="copyToClipboard('exercisesData')">📋 Kopírovať Exercises</button>
+        </div>
+
+        <div class="section">
+            <h2>📋 Návod na vloženie do Google Sheets</h2>
+            <ol>
+                <li><strong>Otvor svoj Google Sheets súbor</strong> kde má byť databáza</li>
+                <li><strong>Vytvor tab "TrainingPlans"</strong> (ak neexistuje)</li>
+                <li><strong>Vlož hlavičky a dáta</strong> z prvého textového poľa</li>
+                <li><strong>Vytvor tab "TrainingPlanExercises"</strong> (ak neexistuje)</li>
+                <li><strong>Vlož hlavičky a dáta</strong> z druhého textového poľa</li>
+                <li><strong>Znovu nasaď Apps Script</strong> s novým kódom</li>
+                <li><strong>Testuj aplikáciu</strong> - mala by načítať dáta z Google Sheets</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>🔧 Apps Script Deployment</h2>
+            <p class="info">Po vložení dát do Google Sheets:</p>
+            <ol>
+                <li>Choď na <strong>script.google.com</strong></li>
+                <li>Otvor tvoj script</li>
+                <li>Klikni <strong>Deploy > New Deployment</strong></li>
+                <li>Nastav <strong>Execute as: Me</strong></li>
+                <li>Nastav <strong>Who has access: Anyone</strong></li>
+                <li>Skopíruj nové <strong>Web app URL</strong></li>
+                <li>Aktualizuj URL v aplikácii</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = '✅ Skopírované!';
+            button.style.background = '#238636';
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '#1f6feb';
+            }, 2000);
+        }
+        
+        // Add instructions
+        console.log('🏋️ Manual Google Sheets Data Entry Tool loaded');
+        console.log('📋 Use the copy buttons to copy data to your Google Sheets');
+    </script>
+</body>
+</html>
