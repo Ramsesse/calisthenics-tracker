@@ -7,7 +7,12 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(response => response || fetch(e.request))
-  );
+  const url = new URL(e.request.url);
+  // Cache only local files (same origin)
+  if (url.origin === self.location.origin) {
+    e.respondWith(
+      caches.match(e.request).then(response => response || fetch(e.request))
+    );
+  }
+  // Iné requesty (napr. Google API) nechaj prejsť normálne
 });
