@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Training Plan</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #0d1117; color: #e6edf3; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .log { background: #161b22; padding: 15px; border-radius: 6px; margin: 10px 0; }
+        .success { color: #3fb950; }
+        .error { color: #f85149; }
+        .info { color: #58a6ff; }
+        button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #484f58; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏋️ Pridanie kompletného tréningového plánu</h1>
+        <p>Tento nástroj pridá 5-dňový tréningový plán do tvojich Google Sheets.</p>
+        
+        <button id="addPlanBtn" onclick="addTrainingPlan()">Pridať tréningový plán</button>
+        
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbwiDlSFZIVr5m9B98GXuXpXOEd43Cn4tY4Ug6MNWGB4ebMHTJDPxlVmda9ModBrNT06/exec";
+
+        const treningove_dni = {
+          "Deň 1 – Nohy + Core": ["Pistol squat", "Wall sit", "Calf raises", "Leg raises", "Plank"],
+          "Deň 2 – Hrudník + Triceps + L-sit": ["Incline push-ups", "Dipy", "Diamond push-ups", "L-sit", "Knee raises"],
+          "Deň 3 – Chrbát + Biceps": ["Pull-ups", "Negative muscle-ups", "Australian rows", "Chin-ups", "Dead hang"],
+          "Deň 4 – Beh + Ramena + Core": ["Pike push-ups", "Plank to push-up", "Shoulder taps", "Bird-dog"],
+          "Deň 5 – Hrudník + Nohy": ["Push-ups", "Dipy", "Wide push-ups", "Wall sit", "Leg raises"]
+        };
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.textContent = message;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        async function addTrainingPlan() {
+            const btn = document.getElementById('addPlanBtn');
+            btn.disabled = true;
+            document.getElementById('logs').innerHTML = '';
+            
+            try {
+                log("🚀 Začínam pridávanie kompletného 5-dňového tréningového plánu...", 'info');
+                
+                // 1. Add the training plan
+                const planData = {
+                    PlanID: 2,
+                    UserID: 1,
+                    Name: "Kompletný 5-dňový plán",
+                    Description: "Profesionálny tréningový plán pre rozvoj sily a vytrvalosti",
+                    DifficultyLevel: "Intermediate",
+                    DurationWeeks: 8
+                };
+                
+                log("📋 Pridávam hlavný tréningový plán...", 'info');
+                
+                const planResponse = await fetch(`${API_URL}?sheet=TrainingPlans`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(planData)
+                });
+                
+                if (!planResponse.ok) {
+                    throw new Error(`Chyba pri pridávaní plánu: ${planResponse.status}`);
+                }
+                
+                log("✅ Hlavný plán bol úspešne pridaný", 'success');
+                
+                // 2. Add exercises for each day
+                for (const [dayName, exercises] of Object.entries(treningove_dni)) {
+                    const dayNumber = Object.keys(treningove_dni).indexOf(dayName) + 1;
+                    
+                    log(`📅 Pridávam ${dayName} (Deň ${dayNumber})`, 'info');
+                    
+                    for (const exercise of exercises) {
+                        const exerciseData = {
+                            PlanID: 2,
+                            Day: dayNumber,
+                            ExerciseName: exercise,
+                            Sets: 3,
+                            Reps: getDefaultReps(exercise),
+                            RestSeconds: 60,
+                            MuscleGroup: getMuscleGroup(exercise),
+                            EquipmentRequired: getEquipment(exercise)
+                        };
+                        
+                        log(`  💪 Pridávam: ${exercise}`, 'info');
+                        
+                        const exerciseResponse = await fetch(`${API_URL}?sheet=TrainingPlanExercises`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(exerciseData)
+                        });
+                        
+                        if (!exerciseResponse.ok) {
+                            log(`    ❌ Chyba pri pridávaní ${exercise}: ${exerciseResponse.status}`, 'error');
+                        } else {
+                            log(`    ✅ ${exercise} úspešne pridaný`, 'success');
+                        }
+                        
+                        // Small delay to avoid overwhelming the API
+                        await new Promise(resolve => setTimeout(resolve, 800));
+                    }
+                }
+                
+                log("🎉 Kompletný 5-dňový tréningový plán bol úspešne pridaný!", 'success');
+                log("🔄 Načítaj stránku pre zobrazenie nového plánu", 'info');
+                
+            } catch (error) {
+                log(`❌ Chyba: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function getDefaultReps(exercise) {
+            const repsMap = {
+                "Pistol squat": 5,
+                "Wall sit": 30, // seconds
+                "Calf raises": 15,
+                "Leg raises": 10,
+                "Plank": 30, // seconds
+                "Incline push-ups": 12,
+                "Dipy": 8,
+                "Diamond push-ups": 8,
+                "L-sit": 15, // seconds
+                "Knee raises": 10,
+                "Pull-ups": 6,
+                "Negative muscle-ups": 3,
+                "Australian rows": 10,
+                "Chin-ups": 6,
+                "Dead hang": 20, // seconds
+                "Pike push-ups": 8,
+                "Plank to push-up": 8,
+                "Shoulder taps": 16,
+                "Bird-dog": 10,
+                "Push-ups": 12,
+                "Wide push-ups": 10
+            };
+            
+            return repsMap[exercise] || 10;
+        }
+
+        function getMuscleGroup(exercise) {
+            const muscleGroups = {
+                "Pistol squat": "Legs",
+                "Wall sit": "Legs", 
+                "Calf raises": "Legs",
+                "Leg raises": "Core",
+                "Plank": "Core",
+                "Incline push-ups": "Chest",
+                "Dipy": "Triceps",
+                "Diamond push-ups": "Chest/Triceps",
+                "L-sit": "Core",
+                "Knee raises": "Core",
+                "Pull-ups": "Back",
+                "Negative muscle-ups": "Back/Arms",
+                "Australian rows": "Back",
+                "Chin-ups": "Back/Biceps",
+                "Dead hang": "Back/Grip",
+                "Pike push-ups": "Shoulders",
+                "Plank to push-up": "Core/Chest",
+                "Shoulder taps": "Shoulders/Core",
+                "Bird-dog": "Core",
+                "Push-ups": "Chest",
+                "Wide push-ups": "Chest"
+            };
+            
+            return muscleGroups[exercise] || "Full Body";
+        }
+
+        function getEquipment(exercise) {
+            const equipment = {
+                "Pull-ups": "Pull-up bar",
+                "Negative muscle-ups": "Pull-up bar",
+                "Australian rows": "Low bar",
+                "Chin-ups": "Pull-up bar", 
+                "Dead hang": "Pull-up bar",
+                "Dipy": "Parallel bars or chair"
+            };
+            
+            return equipment[exercise] || "None";
+        }
+    </script>
+</body>
+</html>

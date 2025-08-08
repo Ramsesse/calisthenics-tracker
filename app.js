@@ -295,33 +295,33 @@ function initializeMainApp() {
   const main = document.querySelector('main');
   main.innerHTML = `
     <section id="section-workout">
-      <h1>💪 Workout</h1>
-      <label for="plan-select">Select plan:</label>
+      <h1>💪 Tréning</h1>
+      <label for="plan-select">Vyber tréningový plán:</label>
       <select id="plan-select"></select>
-      <label for="day-select">Select day:</label>
+      <label for="day-select">Vyber deň:</label>
       <select id="day-select"></select>
       <div id="exercise-list"></div>
       <button onclick="submitWorkout()">
         <svg width="18" height="18" fill="#fff" style="vertical-align:middle; margin-right:4px;" viewBox="0 0 16 16">
           <path d="M16 2.5a.5.5 0 0 0-.5-.5h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11zm-1 0v1.528l-7 4.2-7-4.2V2.5h14zm-14 11V4.972l6.646 3.987a.5.5 0 0 0 .708 0L15 4.972V13.5H1z"/>
         </svg>
-        Save Progress
+        Uložiť pokrok
       </button>
       <div id="status"></div>
     </section>
     
     <section id="section-history" style="display:none;">
-      <h2>📊 History</h2>
+      <h2>📊 História</h2>
       <div id="history-log"></div>
     </section>
     
     <section id="section-equipment" style="display:none;">
-      <h2>🏋️ Equipment</h2>
+      <h2>🏋️ Vybavenie</h2>
       <div id="equipment-list"></div>
     </section>
     
     <section id="section-progressions" style="display:none;">
-      <h2>📈 Progress</h2>
+      <h2>📈 Pokrok</h2>
       <div id="progressions-content"></div>
     </section>
   `;
@@ -352,7 +352,7 @@ function populatePlans() {
   const planSelect = document.getElementById('plan-select');
   if (!planSelect) return;
   
-  planSelect.innerHTML = '<option value="">Select a plan</option>';
+  planSelect.innerHTML = '<option value="">Vyber tréningový plán</option>';
   appState.plans.forEach(plan => {
     const option = document.createElement('option');
     option.value = plan.PlanID || plan.id; // Handle both PlanID and id
@@ -401,23 +401,23 @@ function populateDays() {
   const daySelect = document.getElementById('day-select');
   if (!daySelect) return;
   
-  // Map day numbers to names
+  // Map day numbers to Slovak training day names
   const dayMapping = {
-    1: 'Monday',
-    2: 'Tuesday', 
-    3: 'Wednesday',
-    4: 'Thursday',
-    5: 'Friday',
-    6: 'Saturday',
-    7: 'Sunday'
+    1: 'Deň 1 – Nohy + Core',
+    2: 'Deň 2 – Hrudník + Triceps + L-sit', 
+    3: 'Deň 3 – Chrbát + Biceps',
+    4: 'Deň 4 – Beh + Ramena + Core',
+    5: 'Deň 5 – Hrudník + Nohy',
+    6: 'Deň 6 – Odpočinok',
+    7: 'Deň 7 – Odpočinok'
   };
   
-  daySelect.innerHTML = '<option value="">Select a day</option>';
+  daySelect.innerHTML = '<option value="">Vyber deň</option>';
   
   // Get unique days from plan exercises
   const uniqueDays = [...new Set(appState.planExercises.map(ex => ex.Day))];
   
-  uniqueDays.forEach(dayNum => {
+  uniqueDays.sort((a, b) => a - b).forEach(dayNum => {
     if (dayMapping[dayNum]) {
       const option = document.createElement('option');
       option.value = dayNum; // Use number for filtering
@@ -440,7 +440,7 @@ function populateExercises() {
   const selectedDay = daySelect.value;
   
   if (!selectedPlan || !selectedDay) {
-    exerciseList.innerHTML = '<p>Please select both a plan and a day.</p>';
+    exerciseList.innerHTML = '<p>Prosím vyber tréningový plán aj deň.</p>';
     return;
   }
   
@@ -452,7 +452,7 @@ function populateExercises() {
   });
   
   if (exercises.length === 0) {
-    exerciseList.innerHTML = '<p>No exercises found for this plan and day.</p>';
+    exerciseList.innerHTML = '<p>Žiadne cviky neboli nájdené pre tento plán a deň.</p>';
     return;
   }
   
@@ -477,12 +477,12 @@ function populateExercises() {
       <div class="exercise-item">
         <h3>${exerciseName}</h3>
         <div class="exercise-details">
-          <label>Sets: <input type="number" id="sets-${exerciseId}" value="${exercise.sets || 3}" min="1"></label>
-          <label>Reps: <input type="number" id="reps-${exerciseId}" value="${suggestedReps}" min="1" placeholder="${exercise.reps || 10}"></label>
-          <label>Weight (kg): <input type="number" id="weight-${exerciseId}" value="0" min="0" step="0.5"></label>
+          <label>Série: <input type="number" id="sets-${exerciseId}" value="${exercise.sets || 3}" min="1"></label>
+          <label>Opakovania: <input type="number" id="reps-${exerciseId}" value="${suggestedReps}" min="1" placeholder="${exercise.reps || 10}"></label>
+          <label>Váha (kg): <input type="number" id="weight-${exerciseId}" value="0" min="0" step="0.5"></label>
         </div>
-        ${progression ? `<p class="progression-info">📈 Level ${progression.level} | Target: ${suggestedReps} reps</p>` : ''}
-        <p class="exercise-info">💪 ${exercise.MuscleGroup || 'Full body'} | Equipment: ${exercise.EquipmentRequired || 'None'}</p>
+        ${progression ? `<p class="progression-info">📈 Úroveň ${progression.level} | Cieľ: ${suggestedReps} opakovaní</p>` : ''}
+        <p class="exercise-info">💪 ${exercise.MuscleGroup || 'Celé telo'} | Vybavenie: ${exercise.EquipmentRequired || 'Žiadne'}</p>
       </div>
     `;
   }).join('');
