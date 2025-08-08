@@ -15,36 +15,15 @@
       <svg width="28" height="28" fill="#58a6ff" viewBox="0 0 24 24"><path d="M2 10v4h2v-4zm18 0v4h2v-4zm-2.5-4.5l-1.5 1.5v10l1.5 1.5h2v-13zm-11 0h-2v13h2l1.5-1.5v-10zm2.5 1.5v10h6v-10z"/></svg>
       Calisthenics Tracker
     </div>
-    <nav>
-      <a href="#" id="nav-workout" title="Workout"><svg width="20" height="20" fill="#c9d1d9" viewBox="0 0 16 16"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 13A6 6 0 1 1 8 2a6 6 0 0 1 0 12z"/><path d="M8 4a.5.5 0 0 1 .5.5v3.25l2.5 1.5a.5.5 0 0 1-.5.87l-3-1.8A.5.5 0 0 1 7 8.5V4.5A.5.5 0 0 1 8 4z"/></svg> Workout</a>
+        <nav>
+      <a href="#" id="nav-workout" title="Workout"><svg width="20" height="20" fill="#c9d1d9" viewBox="0 0 16 16"><path d="M8 3.5a.5.5 0 0 1 .5.5v4.25l3 1.8a.5.5 0 0 1-.5.87l-3-1.8A.5.5 0 0 1 7 8.5V4a.5.5 0 0 1 .5-.5z"/><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 13A6 6 0 1 1 8 2a6 6 0 0 1 0 12z"/></svg> Workout</a>
       <a href="#" id="nav-history" title="History"><svg width="20" height="20" fill="#c9d1d9" viewBox="0 0 16 16"><path d="M8 3.5a.5.5 0 0 1 .5.5v4.25l3 1.8a.5.5 0 0 1-.5.87l-3-1.8A.5.5 0 0 1 7 8.5V4a.5.5 0 0 1 .5-.5z"/><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 13A6 6 0 1 1 8 2a6 6 0 0 1 0 12z"/></svg> History</a>
+      <a href="#" id="nav-progressions" title="Progressions"><svg width="20" height="20" fill="#c9d1d9" viewBox="0 0 16 16"><path d="M0 0h1v15h15v1H0V0Zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07Z"/></svg> Progress</a>
       <a href="#" id="nav-equipment" title="Equipment"><svg width="20" height="20" fill="#c9d1d9" viewBox="0 0 16 16"><path d="M6.5 1a1.5 1.5 0 0 0-1.415 1H2.5A1.5 1.5 0 0 0 1 3.5v9A1.5 1.5 0 0 0 2.5 14h11A1.5 1.5 0 0 0 15 12.5v-9A1.5 1.5 0 0 0 13.5 2h-2.585A1.5 1.5 0 0 0 9.5 1h-3zM2.5 3h11A.5.5 0 0 1 14 3.5v9a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-9A.5.5 0 0 1 2.5 3z"/></svg> Equipment</a>
     </nav>
   </header>
   <main>
-    <section id="section-workout">
-      <h1>Workout</h1>
-      <label for="plan-select">Select plan:</label>
-      <select id="plan-select"></select>
-      <label for="day-select">Select day:</label>
-      <select id="day-select"></select>
-      <div id="exercise-list"></div>
-      <button onclick="submitWorkout()">
-        <svg width="18" height="18" fill="#fff" style="vertical-align:middle; margin-right:4px;" viewBox="0 0 16 16"><path d="M16 2.5a.5.5 0 0 0-.5-.5h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11zm-1 0v1.528l-7 4.2-7-4.2V2.5h14zm-14 11V4.972l6.646 3.987a.5.5 0 0 0 .708 0L15 4.972V13.5H1z"/></svg>
-        Save Progress
-      </button>
-      <div id="status"></div>
-    </section>
-    <section id="section-history" style="display:none;">
-      <h2>History</h2>
-      <div id="history-log"></div>
-    </section>
-    <section id="section-equipment" style="display:none;">
-      <h2>Equipment</h2>
-      <div id="equipment-list">
-        <!-- Equipment list will be rendered here -->
-      </div>
-    </section>
+    <!-- Content will be dynamically loaded here -->
   </main>
 
   <script src="app.js"></script>

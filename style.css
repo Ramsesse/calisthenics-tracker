@@ -113,6 +113,67 @@ button:hover, .timer-btn:hover {
   color: #58a6ff;
 }
 
+/* Base Test Styles */
+#section-basetest {
+  text-align: center;
+}
+
+#basetest-form .exercise {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: #21262d;
+  border-radius: 6px;
+}
+
+#basetest-form input {
+  width: 120px;
+  background: #0d1117;
+}
+
+#basetest-status {
+  margin-top: 1rem;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* Progressions Styles */
+.progression-card {
+  background: #21262d;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid #58a6ff;
+}
+
+.progression-card h3 {
+  margin: 0 0 0.5rem 0;
+  color: #58a6ff;
+}
+
+.progression-card button {
+  background: #238636;
+  color: white;
+  border: none;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.2s;
+}
+
+.progression-card button:hover {
+  background: #2ea043;
+}
+
+/* Enhanced Exercise Input Styles */
+input[style*="background-color: #0f3460"] {
+  border: 2px solid #58a6ff;
+  box-shadow: 0 0 5px rgba(88, 166, 255, 0.3);
+}
+
 @media (max-width: 600px) {
   main {
     margin: 0.5rem;
@@ -122,5 +183,13 @@ button:hover, .timer-btn:hover {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+  
+  nav {
+    gap: 1rem;
+  }
+  
+  nav a {
+    font-size: 0.9rem;
   }
 }
