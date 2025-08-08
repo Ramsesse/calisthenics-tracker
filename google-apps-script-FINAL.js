@@ -14,6 +14,7 @@ function doGet(e) {
     }
     
     const sheet = e.parameter.sheet;
+    const action = e.parameter.action;
     const callback = e.parameter.callback; // For JSONP support
     
     if (!sheet) {
@@ -22,6 +23,25 @@ function doGet(e) {
       return createResponse(response, callback);
     }
     
+    // Handle save action via GET parameters
+    if (action === 'save') {
+      Logger.log('Saving data via GET parameters to sheet: ' + sheet);
+      
+      // Extract data from parameters (exclude system parameters)
+      const data = {};
+      for (const key in e.parameter) {
+        if (key !== 'sheet' && key !== 'action' && key !== 'callback') {
+          data[key] = e.parameter[key];
+        }
+      }
+      
+      Logger.log('Data to save: ' + JSON.stringify(data));
+      const result = saveToSheet(sheet, data);
+      const response = {success: result, message: 'Data saved successfully'};
+      return createResponse(response, callback);
+    }
+    
+    // Default: get data
     Logger.log('Getting data for sheet: ' + sheet);
     const data = getSheetData(sheet);
     Logger.log('Data retrieved: ' + data.length + ' records');

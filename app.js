@@ -45,14 +45,22 @@ async function postToSheet(sheet, data) {
   try {
     console.log(`Posting to ${sheet}:`, data);
     
-    const response = await fetch(`${SHEETS_API}?sheet=${sheet}`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(data)
+    // Use URL parameters instead of POST body for Google Apps Script
+    const params = new URLSearchParams({
+      sheet: sheet,
+      action: 'save',
+      ...data  // Spread all data properties as URL parameters
+    });
+    
+    const url = `${SHEETS_API}?${params.toString()}`;
+    console.log('Full URL:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET'  // Use GET instead of POST for better compatibility
     });
     
     const result = await response.json();
-    console.log(`Post result for ${sheet}:`, result);
+    console.log(`Result for ${sheet}:`, result);
     
     if (result.error) {
       throw new Error(`API Error: ${result.error}`);

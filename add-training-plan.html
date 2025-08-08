@@ -47,34 +47,25 @@
             console.log(message);
         }
 
-        // JSONP helper functions
-        function makeJSONPRequest(url, data, callback) {
-            const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+        // Simple GET request function
+        async function saveData(sheet, data) {
+            const params = new URLSearchParams({
+                sheet: sheet,
+                action: 'save',
+                ...data
+            });
             
-            // Create script element
-            const script = document.createElement('script');
+            const url = `${API_URL}?${params.toString()}`;
+            console.log('Saving to:', url);
             
-            // Set up callback
-            window[callbackName] = function(response) {
-                callback(null, response);
-                document.head.removeChild(script);
-                delete window[callbackName];
-            };
+            const response = await fetch(url);
+            const result = await response.json();
             
-            // Handle errors
-            script.onerror = function() {
-                callback(new Error('JSONP request failed'));
-                document.head.removeChild(script);
-                delete window[callbackName];
-            };
+            if (result.error) {
+                throw new Error(result.error);
+            }
             
-            // Build URL with data and callback
-            const params = new URLSearchParams(data);
-            params.append('callback', callbackName);
-            script.src = url + '?' + params.toString();
-            
-            // Add script to page
-            document.head.appendChild(script);
+            return result;
         }
 
         async function addTrainingPlan() {
@@ -85,9 +76,8 @@
             try {
                 log("🚀 Začínam pridávanie kompletného 5-dňového tréningového plánu...", 'info');
                 
-                // 1. Add the training plan using JSONP
+                // 1. Add the training plan using simple GET request
                 const planData = {
-                    sheet: 'TrainingPlans',
                     PlanID: 2,
                     UserID: 1,
                     Name: "Kompletný 5-dňový plán",
@@ -98,23 +88,13 @@
                 
                 log("📋 Pridávam hlavný tréningový plán...", 'info');
                 
-                await new Promise((resolve, reject) => {
-                    makeJSONPRequest(API_URL, planData, (error, response) => {
-                        if (error) {
-                            reject(error);
-                        } else if (response && response.error) {
-                            reject(new Error(response.error));
-                        } else {
-                            log("✅ Hlavný plán bol úspešne pridaný", 'success');
-                            resolve(response);
-                        }
-                    });
-                });
+                await saveData('TrainingPlans', planData);
+                log("✅ Hlavný plán bol úspešne pridaný", 'success');
                 
                 // Small delay between requests
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // 2. Add exercises for each day using JSONP
+                // 2. Add exercises for each day
                 for (const [dayName, exercises] of Object.entries(treningove_dni)) {
                     const dayNumber = Object.keys(treningove_dni).indexOf(dayName) + 1;
                     
@@ -122,7 +102,6 @@
                     
                     for (const exercise of exercises) {
                         const exerciseData = {
-                            sheet: 'TrainingPlanExercises',
                             PlanID: 2,
                             Day: dayNumber,
                             ExerciseName: exercise,
@@ -136,18 +115,8 @@
                         log(`  💪 Pridávam: ${exercise}`, 'info');
                         
                         try {
-                            await new Promise((resolve, reject) => {
-                                makeJSONPRequest(API_URL, exerciseData, (error, response) => {
-                                    if (error) {
-                                        reject(error);
-                                    } else if (response && response.error) {
-                                        reject(new Error(response.error));
-                                    } else {
-                                        log(`    ✅ ${exercise} úspešne pridaný`, 'success');
-                                        resolve(response);
-                                    }
-                                });
-                            });
+                            await saveData('TrainingPlanExercises', exerciseData);
+                            log(`    ✅ ${exercise} úspešne pridaný`, 'success');
                         } catch (exerciseError) {
                             log(`    ❌ Chyba pri pridávaní ${exercise}: ${exerciseError.message}`, 'error');
                         }
