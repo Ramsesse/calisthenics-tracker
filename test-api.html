@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Connection</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #0d1117; color: #e6edf3; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .log { background: #161b22; padding: 15px; border-radius: 6px; margin: 10px 0; }
+        .success { color: #3fb950; }
+        .error { color: #f85149; }
+        .info { color: #58a6ff; }
+        button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2ea043; }
+        pre { background: #161b22; padding: 10px; border-radius: 6px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test API Pripojenia</h1>
+        <p>Tento nástroj testuje pripojenie k tvojmu Google Apps Script API.</p>
+        
+        <button onclick="testRead()">📖 Test čítania dát</button>
+        <button onclick="testSaveSimple()">💾 Test uloženia (jednoduché)</button>
+        <button onclick="testSaveTrainingPlan()">🏋️ Test uloženia tréning plánu</button>
+        <button onclick="clearLogs()">🗑️ Vymazať logy</button>
+        
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbwiDlSFZIVr5m9B98GXuXpXOEd43Cn4tY4Ug6MNWGB4ebMHTJDPxlVmda9ModBrNT06/exec";
+        
+        function log(message, type = 'info', data = null) {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            
+            let content = `[${new Date().toLocaleTimeString()}] ${message}`;
+            if (data) {
+                content += `\n${JSON.stringify(data, null, 2)}`;
+            }
+            
+            logDiv.innerHTML = `<pre>${content}</pre>`;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message, data);
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        async function testRead() {
+            log("🔍 Testujem čítanie TrainingPlans...", 'info');
+            
+            try {
+                const url = `${API_URL}?sheet=TrainingPlans`;
+                log(`Volám URL: ${url}`, 'info');
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                log(`Response status: ${response.status} ${response.statusText}`, 'info');
+                
+                const data = await response.json();
+                log("✅ Čítanie úspešné!", 'success', data);
+                
+            } catch (error) {
+                log(`❌ Chyba pri čítaní: ${error.message}`, 'error', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+        }
+        
+        async function testSaveSimple() {
+            log("💾 Testujem jednoduché uloženie...", 'info');
+            
+            try {
+                const testData = {
+                    sheet: 'TestSheet',
+                    action: 'save',
+                    TestID: Date.now(),
+                    TestName: 'Test záznam',
+                    TestValue: 'Testovacia hodnota'
+                };
+                
+                const params = new URLSearchParams(testData);
+                const url = `${API_URL}?${params.toString()}`;
+                
+                log(`Volám URL: ${url}`, 'info');
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                log(`Response status: ${response.status} ${response.statusText}`, 'info');
+                
+                const result = await response.json();
+                log("✅ Uloženie úspešné!", 'success', result);
+                
+            } catch (error) {
+                log(`❌ Chyba pri ukladaní: ${error.message}`, 'error', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+        }
+        
+        async function testSaveTrainingPlan() {
+            log("🏋️ Testujem uloženie tréning plánu...", 'info');
+            
+            try {
+                const planData = {
+                    sheet: 'TrainingPlans',
+                    action: 'save',
+                    PlanID: 999,
+                    UserID: 1,
+                    Name: 'Test plán',
+                    Description: 'Testovací tréningový plán',
+                    DifficultyLevel: 'Beginner',
+                    DurationWeeks: 4
+                };
+                
+                const params = new URLSearchParams(planData);
+                const url = `${API_URL}?${params.toString()}`;
+                
+                log(`Volám URL (skrátené): ${url.substring(0, 100)}...`, 'info');
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                log(`Response status: ${response.status} ${response.statusText}`, 'info');
+                
+                const result = await response.json();
+                log("✅ Tréning plán uložený!", 'success', result);
+                
+                // Test čítania po uložení
+                setTimeout(async () => {
+                    log("🔄 Testujem čítanie po uložení...", 'info');
+                    await testRead();
+                }, 1000);
+                
+            } catch (error) {
+                log(`❌ Chyba pri ukladaní plánu: ${error.message}`, 'error', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+        }
+        
+        // Automaticky spusť test pri načítaní
+        window.onload = function() {
+            log("🚀 API tester načítaný. Klikni na tlačidlá pre testovanie.", 'info');
+            
+            // Test základného pripojenia
+            setTimeout(testRead, 500);
+        };
+    </script>
+</body>
+</html>

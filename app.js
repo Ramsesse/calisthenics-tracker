@@ -11,10 +11,20 @@ const appState = {
   users: [],
   progressions: [],
   baseTest: [],
-  currentUser: 'default_user'
+  currentUser: 'default_user',
+  isOnline: true,
+  offlineStorage: null
 };
 
-// --- Fetch Functions ---
+// Initialize offline storage
+function initOfflineStorage() {
+  if (typeof OfflineStorage !== 'undefined') {
+    appState.offlineStorage = new OfflineStorage();
+    console.log('📱 Offline storage initialized');
+  }
+}
+
+// --- Fetch Functions with Offline Fallback ---
 async function fetchSheet(sheet) {
   try {
     showNotification(`Loading ${sheet}...`, 'info');
@@ -33,9 +43,19 @@ async function fetchSheet(sheet) {
       throw new Error(`API Error: ${data.error}`);
     }
     
+    appState.isOnline = true;
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error(`Error fetching ${sheet}:`, error);
+    
+    // Try offline storage
+    if (appState.offlineStorage) {
+      console.log(`📱 Using offline data for ${sheet}`);
+      appState.isOnline = false;
+      showNotification(`Using offline data for ${sheet}`, 'info');
+      return appState.offlineStorage.getData(sheet);
+    }
+    
     showNotification(`Failed to load ${sheet}: ${error.message}`, 'error');
     return [];
   }
@@ -45,31 +65,49 @@ async function postToSheet(sheet, data) {
   try {
     console.log(`Posting to ${sheet}:`, data);
     
-    // Use URL parameters instead of POST body for Google Apps Script
-    const params = new URLSearchParams({
-      sheet: sheet,
-      action: 'save',
-      ...data  // Spread all data properties as URL parameters
-    });
-    
-    const url = `${SHEETS_API}?${params.toString()}`;
-    console.log('Full URL:', url);
-    
-    const response = await fetch(url, {
-      method: 'GET'  // Use GET instead of POST for better compatibility
-    });
-    
-    const result = await response.json();
-    console.log(`Result for ${sheet}:`, result);
-    
-    if (result.error) {
-      throw new Error(`API Error: ${result.error}`);
+    if (appState.isOnline) {
+      // Try online first
+      const params = new URLSearchParams({
+        sheet: sheet,
+        action: 'save',
+        ...data  // Spread all data properties as URL parameters
+      });
+      
+      const url = `${SHEETS_API}?${params.toString()}`;
+      console.log('Full URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET'  // Use GET instead of POST for better compatibility
+      });
+      
+      const result = await response.json();
+      console.log(`Result for ${sheet}:`, result);
+      
+      if (result.error) {
+        throw new Error(`API Error: ${result.error}`);
+      }
+      
+      showNotification(`Data saved to ${sheet}!`, 'success');
+      return result;
+    } else {
+      throw new Error('Online mode not available');
     }
     
-    showNotification(`Data saved to ${sheet}!`, 'success');
-    return result;
   } catch (error) {
     console.error(`Error posting to ${sheet}:`, error);
+    
+    // Fallback to offline storage
+    if (appState.offlineStorage) {
+      console.log(`📱 Saving ${sheet} data offline`);
+      appState.isOnline = false;
+      const success = appState.offlineStorage.addRecord(sheet, data);
+      
+      if (success) {
+        showNotification(`Data saved offline to ${sheet}!`, 'success');
+        return {success: true, offline: true};
+      }
+    }
+    
     showNotification(`Failed to save to ${sheet}: ${error.message}`, 'error');
     return {success: false, error: error.message};
   }
@@ -122,6 +160,9 @@ function showLoadingState() {
 async function loadAllTables() {
   console.log("Loading all tables from Google Sheets...");
   
+  // Initialize offline storage first
+  initOfflineStorage();
+  
   // Load all data in parallel
   const [plans, planExercises, userHistory, equipment, users, progressions, baseTest] = await Promise.all([
     fetchSheet('TrainingPlans'),
@@ -143,6 +184,13 @@ async function loadAllTables() {
   appState.baseTest = baseTest;
   
   console.log("All data loaded:", appState);
+  
+  // Show online/offline status
+  if (appState.isOnline) {
+    showNotification('✅ Connected to Google Sheets', 'success');
+  } else {
+    showNotification('📱 Running in offline mode', 'info');
+  }
 }
 
 // --- Base Test Logic ---
@@ -308,10 +356,14 @@ function initializeMainApp() {
         <button onclick="addComprehensiveTrainingPlan()" style="background: #238636; margin-right: 10px;">
           ➕ Pridať 5-dňový plán
         </button>
-        <button onclick="location.reload()" style="background: #1f6feb;">
+        <button onclick="addOfflineTrainingPlan()" style="background: #1f6feb; margin-right: 10px;">
+          📱 Pridať plán offline
+        </button>
+        <button onclick="location.reload()" style="background: #6f42c1;">
           🔄 Obnoviť dáta
         </button>
       </div>
+      <div id="connection-status" style="margin-bottom: 1rem; padding: 10px; border-radius: 6px;"></div>
       <label for="plan-select">Vyber tréningový plán:</label>
       <select id="plan-select"></select>
       <label for="day-select">Vyber deň:</label>
@@ -362,6 +414,7 @@ function renderWorkoutSection() {
   populatePlans();
   populateDays();
   populateExercises();
+  updateConnectionStatus();
 }
 
 function populatePlans() {
@@ -721,6 +774,49 @@ function getMondayDate(date) {
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   return new Date(d.setHours(0,0,0,0) && d.setDate(diff));
+}
+
+// --- Add Offline Training Plan Function ---
+function addOfflineTrainingPlan() {
+  if (!appState.offlineStorage) {
+    showNotification('❌ Offline storage nie je dostupný', 'error');
+    return;
+  }
+
+  try {
+    showNotification('📱 Pridávam offline tréningový plán...', 'info');
+    
+    // The offline storage already has the 5-day plan in default data
+    // Just reload the data from offline storage
+    appState.plans = appState.offlineStorage.getData('TrainingPlans');
+    appState.planExercises = appState.offlineStorage.getData('TrainingPlanExercises');
+    
+    showNotification('✅ Offline tréningový plán je dostupný!', 'success');
+    
+    // Update the UI
+    renderWorkoutSection();
+    updateConnectionStatus();
+    
+  } catch (error) {
+    showNotification(`❌ Chyba: ${error.message}`, 'error');
+  }
+}
+
+function updateConnectionStatus() {
+  const statusDiv = document.getElementById('connection-status');
+  if (statusDiv) {
+    if (appState.isOnline) {
+      statusDiv.innerHTML = '🌐 <strong>Online režim</strong> - pripojené k Google Sheets';
+      statusDiv.style.background = '#1f4a2e';
+      statusDiv.style.border = '1px solid #3fb950';
+      statusDiv.style.color = '#3fb950';
+    } else {
+      statusDiv.innerHTML = '📱 <strong>Offline režim</strong> - používajú sa lokálne dáta';
+      statusDiv.style.background = '#2d2d30';
+      statusDiv.style.border = '1px solid #58a6ff';
+      statusDiv.style.color = '#58a6ff';
+    }
+  }
 }
 
 // --- Add Training Plan Function ---
