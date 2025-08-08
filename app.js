@@ -355,25 +355,75 @@ function populatePlans() {
   planSelect.innerHTML = '<option value="">Select a plan</option>';
   appState.plans.forEach(plan => {
     const option = document.createElement('option');
-    option.value = plan.id;
-    option.textContent = plan.name;
+    option.value = plan.PlanID || plan.id; // Handle both PlanID and id
+    option.textContent = plan.Name || plan.name; // Handle both Name and name
     planSelect.appendChild(option);
   });
   
   planSelect.addEventListener('change', populateExercises);
 }
 
+// Helper function to convert day numbers to day names
+function getDayName(dayValue) {
+  if (typeof dayValue === 'string') return dayValue; // Already a day name
+  
+  const dayMapping = {
+    1: 'monday',
+    2: 'tuesday', 
+    3: 'wednesday',
+    4: 'thursday',
+    5: 'friday',
+    6: 'saturday',
+    7: 'sunday'
+  };
+  
+  return dayMapping[dayValue] || dayValue;
+}
+
+// Helper function to convert day names to day numbers
+function getDayNumber(dayValue) {
+  if (typeof dayValue === 'number') return dayValue; // Already a day number
+  
+  const dayMapping = {
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6,
+    'sunday': 7
+  };
+  
+  return dayMapping[dayValue.toLowerCase()] || dayValue;
+}
+
 function populateDays() {
   const daySelect = document.getElementById('day-select');
   if (!daySelect) return;
   
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  // Map day numbers to names
+  const dayMapping = {
+    1: 'Monday',
+    2: 'Tuesday', 
+    3: 'Wednesday',
+    4: 'Thursday',
+    5: 'Friday',
+    6: 'Saturday',
+    7: 'Sunday'
+  };
+  
   daySelect.innerHTML = '<option value="">Select a day</option>';
-  days.forEach(day => {
-    const option = document.createElement('option');
-    option.value = day;
-    option.textContent = day;
-    daySelect.appendChild(option);
+  
+  // Get unique days from plan exercises
+  const uniqueDays = [...new Set(appState.planExercises.map(ex => ex.Day))];
+  
+  uniqueDays.forEach(dayNum => {
+    if (dayMapping[dayNum]) {
+      const option = document.createElement('option');
+      option.value = dayNum; // Use number for filtering
+      option.textContent = dayMapping[dayNum];
+      daySelect.appendChild(option);
+    }
   });
   
   daySelect.addEventListener('change', populateExercises);
@@ -394,24 +444,30 @@ function populateExercises() {
     return;
   }
   
-  const exercises = appState.planExercises.filter(ex => 
-    ex.plan_id == selectedPlan && ex.day === selectedDay
-  );
+  // Handle both day number and day name formats
+  const exercises = appState.planExercises.filter(ex => {
+    const planMatch = (ex.PlanID == selectedPlan || ex.plan_id == selectedPlan);
+    const dayMatch = (getDayName(ex.Day) === selectedDay || getDayNumber(ex.day) == getDayNumber(selectedDay) || ex.day === selectedDay);
+    return planMatch && dayMatch;
+  });
   
   if (exercises.length === 0) {
     exerciseList.innerHTML = '<p>No exercises found for this plan and day.</p>';
     return;
   }
   
-  exerciseList.innerHTML = exercises.map(exercise => {
-    // Get user progression and base test for smart rep suggestion
-    const progression = getUserProgression(exercise.exercise_name);
-    const baseTest = getUserBaseTest(exercise.exercise_name);
+  exerciseList.innerHTML = exercises.map((exercise, index) => {
+    const exerciseName = exercise.ExerciseName || exercise.exercise_name;
+    const exerciseId = exercise.id || `${selectedPlan}-${selectedDay}-${index}`;
     
-    let suggestedReps = exercise.reps;
+    // Get user progression and base test for smart rep suggestion
+    const progression = getUserProgression(exerciseName);
+    const baseTest = getUserBaseTest(exerciseName);
+    
+    let suggestedReps = exercise.reps || 10; // Default to 10 if not specified
     if (progression && baseTest) {
       suggestedReps = calculateExpectedReps(
-        exercise.exercise_name,
+        exerciseName,
         progression.level,
         baseTest.max_reps
       );
@@ -419,13 +475,14 @@ function populateExercises() {
     
     return `
       <div class="exercise-item">
-        <h3>${exercise.exercise_name}</h3>
+        <h3>${exerciseName}</h3>
         <div class="exercise-details">
-          <label>Sets: <input type="number" id="sets-${exercise.id}" value="${exercise.sets}" min="1"></label>
-          <label>Reps: <input type="number" id="reps-${exercise.id}" value="${suggestedReps}" min="1" placeholder="${exercise.reps}"></label>
-          <label>Weight (kg): <input type="number" id="weight-${exercise.id}" value="0" min="0" step="0.5"></label>
+          <label>Sets: <input type="number" id="sets-${exerciseId}" value="${exercise.sets || 3}" min="1"></label>
+          <label>Reps: <input type="number" id="reps-${exerciseId}" value="${suggestedReps}" min="1" placeholder="${exercise.reps || 10}"></label>
+          <label>Weight (kg): <input type="number" id="weight-${exerciseId}" value="0" min="0" step="0.5"></label>
         </div>
         ${progression ? `<p class="progression-info">📈 Level ${progression.level} | Target: ${suggestedReps} reps</p>` : ''}
+        <p class="exercise-info">💪 ${exercise.MuscleGroup || 'Full body'} | Equipment: ${exercise.EquipmentRequired || 'None'}</p>
       </div>
     `;
   }).join('');
