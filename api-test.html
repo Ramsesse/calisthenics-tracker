@@ -1,29 +1,19 @@
-// Simple API test file for GitHub Pages
-console.log("Testing API connection...");
-
-const testApiUrl = "https://script.google.com/macros/s/AKfycbwiDlSFZIVr5m9B98GXuXpXOEd43Cn4tY4Ug6MNWGB4ebMHTJDPxlVmda9ModBrNT06/exec";
-
-async function testConnection() {
-  try {
-    console.log("Attempting to fetch from API...");
-    const response = await fetch(`${testApiUrl}?sheet=Equipment`);
-    console.log("Response received:", response.status);
-    const data = await response.json();
-    console.log("Data:", data);
-    
-    document.body.innerHTML = `
-      <h1>API Test Result</h1>
-      <p>Status: ${response.status}</p>
-      <p>Data: ${JSON.stringify(data, null, 2)}</p>
-    `;
-  } catch (error) {
-    console.error("API Error:", error);
-    document.body.innerHTML = `
-      <h1>API Test Failed</h1>
-      <p>Error: ${error.message}</p>
-      <p>This likely means CORS is not properly configured in Google Apps Script.</p>
-    `;
-  }
-}
-
-document.addEventListener('DOMContentLoaded', testConnection);
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test - Calisthenics Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #0d1117; color: #c9d1d9; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .testing { color: #ffc107; }
+        pre { background: #161b22; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 API Connection Test</h1>
+    <div id="status">⏳ Testing API connection...</div>
+    <div id="results"></div>
+    <script src="api-test.js"></script>
+</body>
+</html>
