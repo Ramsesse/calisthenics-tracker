@@ -47,6 +47,36 @@
             console.log(message);
         }
 
+        // JSONP helper functions
+        function makeJSONPRequest(url, data, callback) {
+            const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+            
+            // Create script element
+            const script = document.createElement('script');
+            
+            // Set up callback
+            window[callbackName] = function(response) {
+                callback(null, response);
+                document.head.removeChild(script);
+                delete window[callbackName];
+            };
+            
+            // Handle errors
+            script.onerror = function() {
+                callback(new Error('JSONP request failed'));
+                document.head.removeChild(script);
+                delete window[callbackName];
+            };
+            
+            // Build URL with data and callback
+            const params = new URLSearchParams(data);
+            params.append('callback', callbackName);
+            script.src = url + '?' + params.toString();
+            
+            // Add script to page
+            document.head.appendChild(script);
+        }
+
         async function addTrainingPlan() {
             const btn = document.getElementById('addPlanBtn');
             btn.disabled = true;
@@ -55,8 +85,9 @@
             try {
                 log("🚀 Začínam pridávanie kompletného 5-dňového tréningového plánu...", 'info');
                 
-                // 1. Add the training plan
+                // 1. Add the training plan using JSONP
                 const planData = {
+                    sheet: 'TrainingPlans',
                     PlanID: 2,
                     UserID: 1,
                     Name: "Kompletný 5-dňový plán",
@@ -67,19 +98,23 @@
                 
                 log("📋 Pridávam hlavný tréningový plán...", 'info');
                 
-                const planResponse = await fetch(`${API_URL}?sheet=TrainingPlans`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(planData)
+                await new Promise((resolve, reject) => {
+                    makeJSONPRequest(API_URL, planData, (error, response) => {
+                        if (error) {
+                            reject(error);
+                        } else if (response && response.error) {
+                            reject(new Error(response.error));
+                        } else {
+                            log("✅ Hlavný plán bol úspešne pridaný", 'success');
+                            resolve(response);
+                        }
+                    });
                 });
                 
-                if (!planResponse.ok) {
-                    throw new Error(`Chyba pri pridávaní plánu: ${planResponse.status}`);
-                }
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                log("✅ Hlavný plán bol úspešne pridaný", 'success');
-                
-                // 2. Add exercises for each day
+                // 2. Add exercises for each day using JSONP
                 for (const [dayName, exercises] of Object.entries(treningove_dni)) {
                     const dayNumber = Object.keys(treningove_dni).indexOf(dayName) + 1;
                     
@@ -87,6 +122,7 @@
                     
                     for (const exercise of exercises) {
                         const exerciseData = {
+                            sheet: 'TrainingPlanExercises',
                             PlanID: 2,
                             Day: dayNumber,
                             ExerciseName: exercise,
@@ -99,28 +135,34 @@
                         
                         log(`  💪 Pridávam: ${exercise}`, 'info');
                         
-                        const exerciseResponse = await fetch(`${API_URL}?sheet=TrainingPlanExercises`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(exerciseData)
-                        });
-                        
-                        if (!exerciseResponse.ok) {
-                            log(`    ❌ Chyba pri pridávaní ${exercise}: ${exerciseResponse.status}`, 'error');
-                        } else {
-                            log(`    ✅ ${exercise} úspešne pridaný`, 'success');
+                        try {
+                            await new Promise((resolve, reject) => {
+                                makeJSONPRequest(API_URL, exerciseData, (error, response) => {
+                                    if (error) {
+                                        reject(error);
+                                    } else if (response && response.error) {
+                                        reject(new Error(response.error));
+                                    } else {
+                                        log(`    ✅ ${exercise} úspešne pridaný`, 'success');
+                                        resolve(response);
+                                    }
+                                });
+                            });
+                        } catch (exerciseError) {
+                            log(`    ❌ Chyba pri pridávaní ${exercise}: ${exerciseError.message}`, 'error');
                         }
                         
                         // Small delay to avoid overwhelming the API
-                        await new Promise(resolve => setTimeout(resolve, 800));
+                        await new Promise(resolve => setTimeout(resolve, 1200));
                     }
                 }
                 
                 log("🎉 Kompletný 5-dňový tréningový plán bol úspešne pridaný!", 'success');
-                log("🔄 Načítaj stránku pre zobrazenie nového plánu", 'info');
+                log("🔄 Načítaj hlavnú stránku pre zobrazenie nového plánu", 'info');
                 
             } catch (error) {
                 log(`❌ Chyba: ${error.message}`, 'error');
+                log("💡 Skús to znovu alebo skontroluj internetové pripojenie", 'info');
             } finally {
                 btn.disabled = false;
             }

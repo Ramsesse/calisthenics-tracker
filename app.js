@@ -296,6 +296,14 @@ function initializeMainApp() {
   main.innerHTML = `
     <section id="section-workout">
       <h1>💪 Tréning</h1>
+      <div style="margin-bottom: 1rem;">
+        <button onclick="addComprehensiveTrainingPlan()" style="background: #238636; margin-right: 10px;">
+          ➕ Pridať 5-dňový plán
+        </button>
+        <button onclick="location.reload()" style="background: #1f6feb;">
+          🔄 Obnoviť dáta
+        </button>
+      </div>
       <label for="plan-select">Vyber tréningový plán:</label>
       <select id="plan-select"></select>
       <label for="day-select">Vyber deň:</label>
@@ -705,6 +713,138 @@ function getMondayDate(date) {
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   return new Date(d.setHours(0,0,0,0) && d.setDate(diff));
+}
+
+// --- Add Training Plan Function ---
+async function addComprehensiveTrainingPlan() {
+  const treningove_dni = {
+    "Deň 1 – Nohy + Core": ["Pistol squat", "Wall sit", "Calf raises", "Leg raises", "Plank"],
+    "Deň 2 – Hrudník + Triceps + L-sit": ["Incline push-ups", "Dipy", "Diamond push-ups", "L-sit", "Knee raises"],
+    "Deň 3 – Chrbát + Biceps": ["Pull-ups", "Negative muscle-ups", "Australian rows", "Chin-ups", "Dead hang"],
+    "Deň 4 – Beh + Ramena + Core": ["Pike push-ups", "Plank to push-up", "Shoulder taps", "Bird-dog"],
+    "Deň 5 – Hrudník + Nohy": ["Push-ups", "Dipy", "Wide push-ups", "Wall sit", "Leg raises"]
+  };
+
+  try {
+    showNotification("🚀 Pridávam kompletný 5-dňový plán...", 'info');
+    
+    // 1. Add the training plan
+    const planData = {
+      PlanID: 2,
+      UserID: 1,
+      Name: "Kompletný 5-dňový plán",
+      Description: "Profesionálny tréningový plán pre rozvoj sily a vytrvalosti",
+      DifficultyLevel: "Intermediate",
+      DurationWeeks: 8
+    };
+    
+    await postToSheet('TrainingPlans', planData);
+    
+    // 2. Add exercises for each day
+    for (const [dayName, exercises] of Object.entries(treningove_dni)) {
+      const dayNumber = Object.keys(treningove_dni).indexOf(dayName) + 1;
+      
+      showNotification(`📅 Pridávam ${dayName}...`, 'info');
+      
+      for (const exercise of exercises) {
+        const exerciseData = {
+          PlanID: 2,
+          Day: dayNumber,
+          ExerciseName: exercise,
+          Sets: 3,
+          Reps: getDefaultReps(exercise),
+          RestSeconds: 60,
+          MuscleGroup: getMuscleGroup(exercise),
+          EquipmentRequired: getEquipment(exercise)
+        };
+        
+        await postToSheet('TrainingPlanExercises', exerciseData);
+        
+        // Small delay to avoid overwhelming the API
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
+    showNotification("🎉 Kompletný plán bol pridaný! Obnoviť aplikáciu...", 'success');
+    
+    // Reload data
+    setTimeout(async () => {
+      await loadAllTables();
+      renderWorkoutSection();
+    }, 2000);
+    
+  } catch (error) {
+    showNotification(`❌ Chyba: ${error.message}`, 'error');
+  }
+}
+
+function getDefaultReps(exercise) {
+  const repsMap = {
+    "Pistol squat": 5,
+    "Wall sit": 30,
+    "Calf raises": 15,
+    "Leg raises": 10,
+    "Plank": 30,
+    "Incline push-ups": 12,
+    "Dipy": 8,
+    "Diamond push-ups": 8,
+    "L-sit": 15,
+    "Knee raises": 10,
+    "Pull-ups": 6,
+    "Negative muscle-ups": 3,
+    "Australian rows": 10,
+    "Chin-ups": 6,
+    "Dead hang": 20,
+    "Pike push-ups": 8,
+    "Plank to push-up": 8,
+    "Shoulder taps": 16,
+    "Bird-dog": 10,
+    "Push-ups": 12,
+    "Wide push-ups": 10
+  };
+  
+  return repsMap[exercise] || 10;
+}
+
+function getMuscleGroup(exercise) {
+  const muscleGroups = {
+    "Pistol squat": "Legs",
+    "Wall sit": "Legs", 
+    "Calf raises": "Legs",
+    "Leg raises": "Core",
+    "Plank": "Core",
+    "Incline push-ups": "Chest",
+    "Dipy": "Triceps",
+    "Diamond push-ups": "Chest/Triceps",
+    "L-sit": "Core",
+    "Knee raises": "Core",
+    "Pull-ups": "Back",
+    "Negative muscle-ups": "Back/Arms",
+    "Australian rows": "Back",
+    "Chin-ups": "Back/Biceps",
+    "Dead hang": "Back/Grip",
+    "Pike push-ups": "Shoulders",
+    "Plank to push-up": "Core/Chest",
+    "Shoulder taps": "Shoulders/Core",
+    "Bird-dog": "Core",
+    "Push-ups": "Chest",
+    "Wide push-ups": "Chest"
+  };
+  
+  return muscleGroups[exercise] || "Full Body";
+}
+
+function getEquipment(exercise) {
+  const equipment = {
+    "Pull-ups": "Pull-up bar",
+    "Negative muscle-ups": "Pull-up bar",
+    "Australian rows": "Low bar",
+    "Chin-ups": "Pull-up bar", 
+    "Dead hang": "Pull-up bar",
+    "Dipy": "Parallel bars or chair"
+  };
+  
+  return equipment[exercise] || "None";
 }
 
 // --- App Initialization ---
